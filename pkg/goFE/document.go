@@ -18,10 +18,16 @@ type Document struct {
 	// When any component's state changes, we should re-render the DOM
 	// from this element down
 	renderNotifier chan Component
+
+	// The listeners that are active on the document. We should check when a
+	// re-render happens that we don't re-add listeners that are already there
+	activeListeners map[uuid.UUID]bool
+	listenersLock   sync.Mutex
 }
 
 // global document
 var document *Document
+var listenerCount int
 
 func Init() {
 	// Listen for any re-render events
@@ -33,6 +39,8 @@ func Init() {
 				println("Re-rendering DOM from component with id: " + component.GetID().String())
 				rootElement := js.Global().Get("document").Call("getElementById", component.GetID().String())
 				rootElement.Set("innerHTML", component.Render())
+				initListeners([]Component{component})
+				println("Listener count: ", listenerCount)
 			}
 		}
 	}()
@@ -58,9 +66,10 @@ func GetDocument() *Document {
 
 func NewDocument(componentTree []Component) *Document {
 	return &Document{
-		componentTree:  componentTree,
-		killSwitches:   make(map[uuid.UUID]chan bool),
-		renderNotifier: make(chan Component, renderNotifierBufferSize),
+		componentTree:   componentTree,
+		killSwitches:    make(map[uuid.UUID]chan bool),
+		renderNotifier:  make(chan Component, renderNotifierBufferSize),
+		activeListeners: make(map[uuid.UUID]bool),
 	}
 }
 
@@ -97,7 +106,17 @@ func (d *Document) NotifyRender(component Component) {
 
 func (d *Document) AddEventListener(id uuid.UUID, event string, callback js.Func) {
 	println("Adding event listener for component with id: " + id.String())
+	// Check if the listener is already active
+	_, ok := d.activeListeners[id]
+	if ok {
+		return
+	}
+	// Add the listener
 	js.Global().Get("document").Call("getElementById", id.String()).Call("addEventListener", event, callback)
+	d.listenersLock.Lock()
+	defer d.listenersLock.Unlock()
+	d.activeListeners[id] = true
+	listenerCount++
 }
 
 func initListeners(components []Component) {

@@ -21,8 +21,12 @@ type App struct {
 }
 
 func NewApp(props Props) *App {
-	ctr := counter.NewCounter()
-	children := []goFE.Component{ctr}
+	// Make a bunch of counters
+	var children []goFE.Component
+	for i := 0; i < 10; i++ {
+		ctr := counter.NewCounter()
+		children = append(children, ctr)
+	}
 	return &App{
 		id:       uuid.New(),
 		props:    props,
