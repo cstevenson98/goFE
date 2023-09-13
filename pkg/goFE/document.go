@@ -3,7 +3,7 @@ package goFE
 import (
 	"github.com/google/uuid"
 	"sync"
-	"time"
+	"syscall/js"
 )
 
 const renderNotifierBufferSize = 100
@@ -17,9 +17,7 @@ type Document struct {
 
 	// When any component's state changes, we should re-render the DOM
 	// from this element down
-	renderNotifier chan uuid.UUID
-
-	componentMap map[uuid.UUID]*Component
+	renderNotifier chan Component
 }
 
 // global document
@@ -30,22 +28,24 @@ func Init() {
 	go func() {
 		for {
 			select {
-			case id := <-document.renderNotifier:
+			case component := <-document.renderNotifier:
 				// Re-render the DOM from the component with the given id down
-				println("Re-rendering DOM from component with id: " + id.String())
+				println("Re-rendering DOM from component with id: " + component.GetID().String())
+				rootElement := js.Global().Get("document").Call("getElementById", component.GetID().String())
+				rootElement.Set("innerHTML", component.Render())
 			}
 		}
 	}()
 
 	// A test ticker which triggers a re-render on a random uuid
-	go func() {
-		for {
-			select {
-			case <-time.After(1 * time.Second):
-				document.renderNotifier <- uuid.New()
-			}
-		}
-	}()
+	//go func() {
+	//	for {
+	//		select {
+	//		case <-time.After(1 * time.Second):
+	//			document.renderNotifier <- uuid.New()
+	//		}
+	//	}
+	//}()
 }
 
 func SetDocument(doc *Document) {
@@ -60,11 +60,11 @@ func NewDocument(componentTree []Component) *Document {
 	return &Document{
 		componentTree:  componentTree,
 		killSwitches:   make(map[uuid.UUID]chan bool),
-		renderNotifier: make(chan uuid.UUID, renderNotifierBufferSize),
+		renderNotifier: make(chan Component, renderNotifierBufferSize),
 	}
 }
 
-func (d *Document) Init() string {
+func (d *Document) Init() {
 	var buffer string
 
 	for _, component := range d.componentTree {
@@ -72,7 +72,9 @@ func (d *Document) Init() string {
 	}
 
 	//initKillSwitches(d)
-	return buffer
+	rootElement := js.Global().Get("document").Call("getElementById", "root")
+	rootElement.Set("innerHTML", buffer)
+	initListeners(d.componentTree)
 }
 
 func initKillSwitches(d *Document) {
@@ -89,10 +91,18 @@ func (d *Document) Append(component Component) {
 	d.componentTree = append(d.componentTree, component)
 }
 
-func (d *Document) NotifyRender(id uuid.UUID) {
-	d.renderNotifier <- id
+func (d *Document) NotifyRender(component Component) {
+	d.renderNotifier <- component
 }
 
-func addComponentToMap(d *Document, component Component) {
-	d.componentMap[component.GetID()] = &component
+func (d *Document) AddEventListener(id uuid.UUID, event string, callback js.Func) {
+	println("Adding event listener for component with id: " + id.String())
+	js.Global().Get("document").Call("getElementById", id.String()).Call("addEventListener", event, callback)
+}
+
+func initListeners(components []Component) {
+	for _, component := range components {
+		component.InitEventListeners()
+		initListeners(component.GetChildren())
+	}
 }

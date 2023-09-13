@@ -7,4 +7,5 @@ type Component interface {
 	GetID() uuid.UUID
 	GetChildren() []Component
 	GetKill() chan bool
+	InitEventListeners()
 }

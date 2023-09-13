@@ -49,3 +49,5 @@ func (a *App) GetChildren() []goFE.Component {
 func (a *App) GetKill() chan bool {
 	return a.kill
 }
+
+func (a *App) InitEventListeners() {}
