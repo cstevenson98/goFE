@@ -1,0 +1,3 @@
+{% func CounterTemplate(id string, count int) %}
+	<button id="{%s id %}">Click me! Count: {%d count %}</button>
+{% endfunc %}

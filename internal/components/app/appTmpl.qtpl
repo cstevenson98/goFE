@@ -1,0 +1,8 @@
+{% func AppTemplate(name string, children []string) %}
+	<h4 class="bg-red-100">Hello, {%s name %}!</h4>
+  <div class="flex flex-col gap-3 border">
+    {% for _, child := range children %}
+      {%s= child %}
+    {% endfor %}
+  </div>
+{% endfunc %}

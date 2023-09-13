@@ -1,0 +1,10 @@
+version: "3.7"
+
+# nginx with bind mount to index/
+services:
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./index:/usr/share/nginx/html
