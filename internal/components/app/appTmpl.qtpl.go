@@ -18,57 +18,68 @@ var (
 )
 
 //line appTmpl.qtpl:1
-func StreamAppTemplate(qw422016 *qt422016.Writer, name string, children []string) {
+func StreamAppTemplate(qw422016 *qt422016.Writer, id string, name string, children []string, buttonID string) {
 //line appTmpl.qtpl:1
 	qw422016.N().S(`
-	<h4 class="bg-red-100">Hello, `)
+  <div id="`)
 //line appTmpl.qtpl:2
+	qw422016.E().S(id)
+//line appTmpl.qtpl:2
+	qw422016.N().S(`" class="flex flex-col gap-3 border">
+    <h4 class="bg-red-100 text-center w-full p-3 font-bold">Hello, `)
+//line appTmpl.qtpl:3
 	qw422016.E().S(name)
-//line appTmpl.qtpl:2
+//line appTmpl.qtpl:3
 	qw422016.N().S(`!</h4>
-  <div class="flex flex-col gap-3 border">
-    `)
-//line appTmpl.qtpl:4
-	for _, child := range children {
-//line appTmpl.qtpl:4
-		qw422016.N().S(`
+    <div class="flex flex-col gap-3 border">
       `)
 //line appTmpl.qtpl:5
-		qw422016.N().S(child)
+	for _, child := range children {
 //line appTmpl.qtpl:5
 		qw422016.N().S(`
-    `)
+        `)
 //line appTmpl.qtpl:6
+		qw422016.N().S(child)
+//line appTmpl.qtpl:6
+		qw422016.N().S(`
+      `)
+//line appTmpl.qtpl:7
 	}
-//line appTmpl.qtpl:6
+//line appTmpl.qtpl:7
 	qw422016.N().S(`
+      <button id="`)
+//line appTmpl.qtpl:8
+	qw422016.E().S(buttonID)
+//line appTmpl.qtpl:8
+	qw422016.N().S(`" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"> Randomise </button>
+    </div>
   </div>
 `)
-//line appTmpl.qtpl:8
+//line appTmpl.qtpl:11
 }
 
-//line appTmpl.qtpl:8
-func WriteAppTemplate(qq422016 qtio422016.Writer, name string, children []string) {
-//line appTmpl.qtpl:8
+//line appTmpl.qtpl:11
+func WriteAppTemplate(qq422016 qtio422016.Writer, id string, name string, children []string, buttonID string) {
+//line appTmpl.qtpl:11
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line appTmpl.qtpl:8
-	StreamAppTemplate(qw422016, name, children)
-//line appTmpl.qtpl:8
+//line appTmpl.qtpl:11
+	StreamAppTemplate(qw422016, id, name, children, buttonID)
+//line appTmpl.qtpl:11
 	qt422016.ReleaseWriter(qw422016)
-//line appTmpl.qtpl:8
+//line appTmpl.qtpl:11
 }
 
-//line appTmpl.qtpl:8
-func AppTemplate(name string, children []string) string {
-//line appTmpl.qtpl:8
+//line appTmpl.qtpl:11
+func AppTemplate(id string, name string, children []string, buttonID string) string {
+//line appTmpl.qtpl:11
 	qb422016 := qt422016.AcquireByteBuffer()
-//line appTmpl.qtpl:8
-	WriteAppTemplate(qb422016, name, children)
-//line appTmpl.qtpl:8
+//line appTmpl.qtpl:11
+	WriteAppTemplate(qb422016, id, name, children, buttonID)
+//line appTmpl.qtpl:11
 	qs422016 := string(qb422016.B)
-//line appTmpl.qtpl:8
+//line appTmpl.qtpl:11
 	qt422016.ReleaseByteBuffer(qb422016)
-//line appTmpl.qtpl:8
+//line appTmpl.qtpl:11
 	return qs422016
-//line appTmpl.qtpl:8
+//line appTmpl.qtpl:11
 }

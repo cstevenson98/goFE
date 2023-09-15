@@ -32,6 +32,7 @@ func NewCounter() *Counter {
 		setState: setCount,
 		kill:     make(chan bool),
 	}
+
 	go goFE.ListenForStateChange[counterState](newCounter, count)
 	return newCounter
 }

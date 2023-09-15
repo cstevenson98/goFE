@@ -5,7 +5,7 @@ import "sync"
 // State is a generic struct that holds a value and a channel
 type State[T any] struct {
 	Value *T
-	Chan  chan *T
+	ch    chan *T
 	lock  sync.Mutex
 }
 
@@ -14,12 +14,10 @@ type State[T any] struct {
 func NewState[T any](value *T) (*State[T], func(*T)) {
 	newState := &State[T]{
 		Value: value,
-		Chan:  make(chan *T),
+		ch:    make(chan *T),
 	}
 	setState := func(newValue *T) {
-		newState.lock.Lock()
-		defer newState.lock.Unlock()
-		newState.Chan <- newValue
+		newState.ch <- newValue
 	}
 	return newState, setState
 }
@@ -31,8 +29,11 @@ func ListenForStateChange[T any](component Component, state *State[T]) {
 		case <-component.GetKill():
 			println("Stopped listening for state change, componentID: ", component.GetID().String())
 			return
-		case value := <-state.Chan:
+		case value := <-state.ch:
+			state.lock.Lock()
+			println("State change detected, componentID: ", component.GetID().String())
 			state.Value = value
+			state.lock.Unlock()
 			GetDocument().NotifyRender(component)
 		}
 	}

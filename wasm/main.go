@@ -13,6 +13,7 @@ func main() {
 			Title: "Hello World",
 		}),
 	}))
+
 	goFE.GetDocument().Init()
 	println("Initialized document", goFE.GetDocument().GetComponentTree())
 	<-make(chan bool)
