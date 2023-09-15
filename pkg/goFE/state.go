@@ -38,3 +38,22 @@ func ListenForStateChange[T any](component Component, state *State[T]) {
 		}
 	}
 }
+
+func UpdateStateArray[T Component](input *[]T, newLen int, newT func() T) {
+	// Children determined by counter state
+	if newLen != len(*input) {
+		if newLen > len(*input) {
+			// Add counters
+			for i := len(*input); i < newLen; i++ {
+				t := newT()
+				*input = append(*input, t)
+			}
+		} else {
+			// Kill the to-be-removed counters
+			for i := newLen; i < len(*input); i++ {
+				(*input)[i].GetKill() <- true
+			}
+			*input = (*input)[:newLen]
+		}
+	}
+}
