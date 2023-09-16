@@ -1,2 +1,4 @@
 .idea
 index/main.wasm
+# ignore all .qtpl.go
+*.qtpl.go

@@ -2,7 +2,6 @@ package goFE
 
 import (
 	"github.com/google/uuid"
-	"sync"
 	"syscall/js"
 )
 
@@ -10,10 +9,6 @@ const renderNotifierBufferSize = 100
 
 type Document struct {
 	componentTree []Component
-
-	// Whenever a component is created, we should add a kill switch to this map
-	killSwitches map[uuid.UUID]chan bool
-	ksLock       sync.Mutex
 
 	// When any component's state changes, we should re-render the DOM
 	// from this element down

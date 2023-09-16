@@ -39,8 +39,13 @@ func ListenForStateChange[T any](component Component, state *State[T]) {
 	}
 }
 
+// UpdateStateArray provides functionality to control a variable-length collection of components,
+// such as a list of rows in a table, or any other collection of sub-components (children).
 func UpdateStateArray[T Component](input *[]T, newLen int, newT func() T) {
 	// Children determined by counter state
+	if input == nil {
+		panic("'UpdateStateArray' input cannot be nil")
+	}
 	if newLen != len(*input) {
 		if newLen > len(*input) {
 			// Add counters
