@@ -3,7 +3,7 @@
 package counterStack
 
 import (
-	"github.com/cstevenson98/goFE/internal/components/counter"
+	"github.com/cstevenson98/goFE/examples/countersExample/components/counter"
 	"github.com/cstevenson98/goFE/pkg/goFE"
 	"github.com/google/uuid"
 	"math/rand"
