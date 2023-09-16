@@ -50,11 +50,9 @@ func NewDocument(componentTree []Component) *Document {
 
 func (d *Document) Init() {
 	var buffer string
-
 	for _, component := range d.componentTree {
 		buffer += component.Render()
 	}
-
 	rootElement := js.Global().Get("document").Call("getElementById", "root")
 	rootElement.Set("innerHTML", buffer)
 	initListeners(d.componentTree)
@@ -66,10 +64,6 @@ func (d *Document) GetComponentTree() []Component {
 
 func (d *Document) Append(component Component) {
 	d.componentTree = append(d.componentTree, component)
-}
-
-func (d *Document) NotifyRender(component Component) {
-	d.renderNotifier <- component
 }
 
 func (d *Document) AddEventListener(id uuid.UUID, event string, callback js.Func) {

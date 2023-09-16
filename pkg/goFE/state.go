@@ -11,7 +11,7 @@ type State[T any] struct {
 
 // NewState creates a new instance of frontend state. It returns a pointer to the
 // new state, with initial value, and a function to set the state.
-func NewState[T any](value *T) (*State[T], func(*T)) {
+func NewState[T any](component Component, value *T) (*State[T], func(*T)) {
 	newState := &State[T]{
 		Value: value,
 		ch:    make(chan *T),
@@ -19,32 +19,37 @@ func NewState[T any](value *T) (*State[T], func(*T)) {
 	setState := func(newValue *T) {
 		newState.ch <- newValue
 	}
+	go listenForStateChange[T](component, newState)
 	return newState, setState
 }
 
-func ListenForStateChange[T any](component Component, state *State[T]) {
+func listenForStateChange[T any](component Component, state *State[T]) {
 	println("Listening for state change, componentID: ", component.GetID().String())
 	for {
 		select {
 		case <-component.GetKill():
 			println("Stopped listening for state change, componentID: ", component.GetID().String())
+			// kill child components
+			for _, child := range component.GetChildren() {
+				child.GetKill() <- true
+			}
 			return
 		case value := <-state.ch:
 			state.lock.Lock()
 			println("State change detected, componentID: ", component.GetID().String())
 			state.Value = value
 			state.lock.Unlock()
-			GetDocument().NotifyRender(component)
+			document.renderNotifier <- component
 		}
 	}
 }
 
-// UpdateStateArray provides functionality to control a variable-length collection of components,
+// UpdateComponentArray provides functionality to control a variable-length collection of components,
 // such as a list of rows in a table, or any other collection of sub-components (children).
-func UpdateStateArray[T Component](input *[]T, newLen int, newT func() T) {
+func UpdateComponentArray[T Component](input *[]T, newLen int, newT func() T) {
 	// Children determined by counter state
 	if input == nil {
-		panic("'UpdateStateArray' input cannot be nil")
+		panic("'UpdateComponentArray' input cannot be nil")
 	}
 	if newLen != len(*input) {
 		if newLen > len(*input) {

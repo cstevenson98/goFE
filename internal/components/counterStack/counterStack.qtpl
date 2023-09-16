@@ -1,4 +1,4 @@
-{% func AppTemplate(id string, title string, children []string, buttonID string) %}
+{% func CounterStackTemplate(id string, title string, children []string, buttonID string) %}
   <div id="{%s id %}" class="flex flex-col border">
     <h4 class="bg-red-100 text-center w-full p-3 font-bold">{%s title %}!</h4>
     <div class="flex flex-col border">

@@ -13,8 +13,6 @@ func main() {
 			Title: "A selection of counters:",
 		}),
 	}))
-
 	goFE.GetDocument().Init()
-	println("Initialized document", goFE.GetDocument().GetComponentTree())
 	<-make(chan bool)
 }

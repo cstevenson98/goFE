@@ -24,25 +24,16 @@ type Counter struct {
 }
 
 func NewCounter() *Counter {
-	count, setCount := goFE.NewState[counterState](&counterState{count: 0})
-
 	newCounter := &Counter{
-		id:       uuid.New(),
-		state:    count,
-		setState: setCount,
-		kill:     make(chan bool),
+		id:   uuid.New(),
+		kill: make(chan bool),
 	}
-
-	go goFE.ListenForStateChange[counterState](newCounter, count)
+	newCounter.state, newCounter.setState = goFE.NewState[counterState](newCounter, &counterState{count: 0})
 	return newCounter
 }
 
 func (b *Counter) GetID() uuid.UUID {
 	return b.id
-}
-
-func (b *Counter) Render() string {
-	return CounterTemplate(b.id.String(), b.state.Value.count)
 }
 
 func (b *Counter) GetChildren() []goFE.Component {
@@ -59,4 +50,8 @@ func (b *Counter) InitEventListeners() {
 		b.setState(&counterState{count: b.state.Value.count + 1})
 		return nil
 	}))
+}
+
+func (b *Counter) Render() string {
+	return CounterTemplate(b.id.String(), b.state.Value.count)
 }

@@ -31,27 +31,20 @@ type CounterStack struct {
 const randCounterMax = 50
 
 func NewApp(props Props) *CounterStack {
-	randInt := randCounterMax
-	noOfCounter, setNoOfCounter := goFE.NewState[counterStackState](&counterStackState{numberOfCounters: randInt})
-
-	// Make a bunch of counters
-	var children []*counter.Counter
+	randInt := rand.Intn(randCounterMax)
+	var counters []*counter.Counter
 	for i := 0; i < randInt; i++ {
 		ctr := counter.NewCounter()
-		children = append(children, ctr)
+		counters = append(counters, ctr)
 	}
-
 	app := &CounterStack{
 		id:       uuid.New(),
 		buttonID: uuid.New(),
 		props:    props,
-		state:    noOfCounter,
-		setState: setNoOfCounter,
-		counters: children,
+		counters: counters,
 		kill:     make(chan bool),
 	}
-
-	go goFE.ListenForStateChange[counterStackState](app, noOfCounter)
+	app.state, app.setState = goFE.NewState[counterStackState](app, &counterStackState{numberOfCounters: randInt})
 	return app
 }
 
@@ -60,12 +53,12 @@ func (a *CounterStack) GetID() uuid.UUID {
 }
 
 func (a *CounterStack) Render() string {
-	goFE.UpdateStateArray[*counter.Counter](&a.counters, a.state.Value.numberOfCounters, counter.NewCounter)
+	goFE.UpdateComponentArray[*counter.Counter](&a.counters, a.state.Value.numberOfCounters, counter.NewCounter)
 	var childrenResult []string
 	for _, child := range a.counters {
 		childrenResult = append(childrenResult, child.Render())
 	}
-	return AppTemplate(a.id.String(), a.props.Title, childrenResult, a.buttonID.String())
+	return CounterStackTemplate(a.id.String(), a.props.Title, childrenResult, a.buttonID.String())
 }
 
 func (a *CounterStack) GetChildren() []goFE.Component {
