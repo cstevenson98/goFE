@@ -1,9 +1,9 @@
 {% func CounterStackTemplate(id string, title string, children []string, buttonID string) %}
   <div id="{%s id %}" class="flex justify-center">
-    <div class="flex flex-col border max-w-[30rem]">
+    <div class="flex flex-col max-w-[30rem]">
       <h4 class="bg-red-100 text-center w-full p-3 font-bold">{%s title %}</h4>
       <div class="flex flex-col border">
-        <button id="{%s buttonID %}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+        <button id="{%s buttonID %}" class="border border-red-700 text-red-700 hover:text-red-800 bg-white hover:bg-red-50 rounded-sm">
           Randomise
         </button>
 

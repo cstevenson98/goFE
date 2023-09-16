@@ -1,3 +1,31 @@
-{% func CounterTemplate(id string, count int) %}
-	<button id="{%s id %}">Click me! Count: {%d count %}</button>
+{% func CounterTemplate(id string, count int, lowerButtonID, raiseButtonID string) %}
+  <div id="{%s id %}" class="flex justify-between items-center text-red-900 bg-gray-100">
+    <button id="{%s lowerButtonID %}" class="flex-initial">
+      <svg
+        width="24"
+        height="24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <use href="feather-sprite.svg#minus-circle" />
+      </svg>
+    </button>
+    <span class="flex-auto text-center">Count: {%d count %}</span>
+    <button id="{%s raiseButtonID %}" class="flex-initial">
+      <svg
+        width="24"
+        height="24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <use href="feather-sprite.svg#plus-circle" />
+      </svg>
+    </button>
+  </div>
 {% endfunc %}

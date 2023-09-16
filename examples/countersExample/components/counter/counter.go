@@ -18,6 +18,9 @@ type Counter struct {
 	id    uuid.UUID
 	props Props
 
+	lowerID uuid.UUID
+	raiseID uuid.UUID
+
 	state    *goFE.State[counterState]
 	setState func(*counterState)
 	kill     chan bool
@@ -25,33 +28,40 @@ type Counter struct {
 
 func NewCounter() *Counter {
 	newCounter := &Counter{
-		id:   uuid.New(),
-		kill: make(chan bool),
+		id:      uuid.New(),
+		lowerID: uuid.New(),
+		raiseID: uuid.New(),
+		kill:    make(chan bool),
 	}
 	newCounter.state, newCounter.setState = goFE.NewState[counterState](newCounter, &counterState{count: 0})
 	return newCounter
 }
 
-func (b *Counter) GetID() uuid.UUID {
-	return b.id
+func (c *Counter) GetID() uuid.UUID {
+	return c.id
 }
 
-func (b *Counter) GetChildren() []goFE.Component {
+func (c *Counter) GetChildren() []goFE.Component {
 	return nil
 }
 
-func (b *Counter) GetKill() chan bool {
-	return b.kill
+func (c *Counter) GetKill() chan bool {
+	return c.kill
 }
 
-func (b *Counter) InitEventListeners() {
-	goFE.GetDocument().AddEventListener(b.id, "click", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+func (c *Counter) InitEventListeners() {
+	goFE.GetDocument().AddEventListener(c.lowerID, "click", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		println("Clicked button")
-		b.setState(&counterState{count: b.state.Value.count + 1})
+		c.setState(&counterState{count: c.state.Value.count - 1})
+		return nil
+	}))
+	goFE.GetDocument().AddEventListener(c.raiseID, "click", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		println("Clicked button")
+		c.setState(&counterState{count: c.state.Value.count + 1})
 		return nil
 	}))
 }
 
-func (b *Counter) Render() string {
-	return CounterTemplate(b.id.String(), b.state.Value.count)
+func (c *Counter) Render() string {
+	return CounterTemplate(c.id.String(), c.state.Value.count, c.lowerID.String(), c.raiseID.String())
 }
