@@ -27,6 +27,12 @@ func listenForStateChange[T any](component Component, state *State[T]) {
 	println("Listening for state change, componentID: ", component.GetID().String())
 	for {
 		select {
+		case value := <-state.ch:
+			state.lock.Lock()
+			println("State change detected, componentID: ", component.GetID().String())
+			state.Value = value
+			state.lock.Unlock()
+			document.renderNotifier <- component
 		case <-component.GetKill():
 			println("Stopped listening for state change, componentID: ", component.GetID().String())
 			// kill child components
@@ -34,12 +40,6 @@ func listenForStateChange[T any](component Component, state *State[T]) {
 				child.GetKill() <- true
 			}
 			return
-		case value := <-state.ch:
-			state.lock.Lock()
-			println("State change detected, componentID: ", component.GetID().String())
-			state.Value = value
-			state.lock.Unlock()
-			document.renderNotifier <- component
 		}
 	}
 }
@@ -47,19 +47,18 @@ func listenForStateChange[T any](component Component, state *State[T]) {
 // UpdateComponentArray provides functionality to control a variable-length collection of components,
 // such as a list of rows in a table, or any other collection of sub-components (children).
 func UpdateComponentArray[T Component](input *[]T, newLen int, newT func() T) {
-	// Children determined by counter state
 	if input == nil {
 		panic("'UpdateComponentArray' input cannot be nil")
 	}
 	if newLen != len(*input) {
 		if newLen > len(*input) {
-			// Add counters
+			// Add components
 			for i := len(*input); i < newLen; i++ {
 				t := newT()
 				*input = append(*input, t)
 			}
 		} else {
-			// Kill the to-be-removed counters
+			// Kill the to-be-removed components
 			for i := newLen; i < len(*input); i++ {
 				(*input)[i].GetKill() <- true
 			}
