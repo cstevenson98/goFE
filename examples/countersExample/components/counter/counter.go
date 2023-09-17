@@ -26,7 +26,7 @@ type Counter struct {
 	kill     chan bool
 }
 
-func NewCounter() *Counter {
+func NewCounter(props *Props) *Counter {
 	newCounter := &Counter{
 		id:      uuid.New(),
 		lowerID: uuid.New(),

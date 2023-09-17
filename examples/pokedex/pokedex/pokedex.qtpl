@@ -1,0 +1,7 @@
+{% func PokedexTemplate(id string, children string) %}
+  <div id="{%s id %}" class="flex justify-center">
+    <div class="grid grid-cols-3 gap-4">
+      {%s= children %}
+    </div>
+  </div>
+{% endfunc %}

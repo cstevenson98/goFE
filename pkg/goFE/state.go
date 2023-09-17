@@ -46,15 +46,23 @@ func listenForStateChange[T any](component Component, state *State[T]) {
 
 // UpdateComponentArray provides functionality to control a variable-length collection of components,
 // such as a list of rows in a table, or any other collection of sub-components (children).
-func UpdateComponentArray[T Component](input *[]T, newLen int, newT func() T) {
+func UpdateComponentArray[T Component, Props any](input *[]T, newLen int, newT func(props *Props) T, newProps []*Props) {
 	if input == nil {
 		panic("'UpdateComponentArray' input cannot be nil")
+	}
+	if newProps != nil && len(newProps) != newLen {
+		panic("'UpdateComponentArray' newProps must be nil or have same length as newLen")
 	}
 	if newLen != len(*input) {
 		if newLen > len(*input) {
 			// Add components
 			for i := len(*input); i < newLen; i++ {
-				t := newT()
+				var t T
+				if newProps != nil {
+					t = newT(newProps[i])
+				} else {
+					t = newT(nil)
+				}
 				*input = append(*input, t)
 			}
 		} else {

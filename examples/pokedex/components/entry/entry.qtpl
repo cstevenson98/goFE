@@ -1,3 +1,13 @@
-{% func EntryTemplate(id string) %}
-  <div id="{%s id %}"> entry </div>
+{% func EntryTemplate(id string, pokemon *Pokemon) %}
+  <div id="{%s id %}" class="bg-blue-50 rounded-lg shadow w-[20rem] min-h-[22rem]">
+    {% if pokemon != nil %}
+      <img src="{%s pokemon.Sprites.Other.OfficialArtwork.FrontDefault %}" />
+      <div class="flex flex-col gap-2 p-4">
+        <h1 class="text-center capitalize text-2xl text-blue-900 font-semibold">{%s pokemon.Name %}</h1>
+        <h1 class="text-center text-blue-900">#{%d pokemon.ID %}</h1>
+      </div>
+    {% else %}
+      <h1>Loading...</h1>
+    {% endif %}
+  </div>
 {% endfunc %}

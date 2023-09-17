@@ -34,7 +34,7 @@ func NewCounterStack(props Props) *CounterStack {
 	randInt := rand.Intn(randCounterMax)
 	var counters []*counter.Counter
 	for i := 0; i < randInt; i++ {
-		ctr := counter.NewCounter()
+		ctr := counter.NewCounter(nil)
 		counters = append(counters, ctr)
 	}
 	app := &CounterStack{
@@ -53,7 +53,7 @@ func (a *CounterStack) GetID() uuid.UUID {
 }
 
 func (a *CounterStack) Render() string {
-	goFE.UpdateComponentArray[*counter.Counter](&a.counters, a.state.Value.numberOfCounters, counter.NewCounter)
+	goFE.UpdateComponentArray[*counter.Counter](&a.counters, a.state.Value.numberOfCounters, counter.NewCounter, nil)
 	var childrenResult []string
 	for _, child := range a.counters {
 		childrenResult = append(childrenResult, child.Render())

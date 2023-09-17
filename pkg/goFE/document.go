@@ -77,3 +77,11 @@ func initListeners(components []Component) {
 		initListeners(component.GetChildren())
 	}
 }
+
+func RenderChildren(component Component) string {
+	var buffer string
+	for _, child := range component.GetChildren() {
+		buffer += child.Render()
+	}
+	return buffer
+}
