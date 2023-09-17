@@ -24,7 +24,7 @@ func Init() {
 		for {
 			select {
 			case component := <-document.renderNotifier:
-				println("Re-rendering DOM from component with id: " + component.GetID().String())
+				//println("Re-rendering DOM from component with id: " + component.GetID().String())
 				rootElement := js.Global().Get("document").Call("getElementById", component.GetID().String())
 				rootElement.Set("outerHTML", component.Render())
 				initListeners([]Component{component})

@@ -1,7 +1,20 @@
-{% func PokedexTemplate(id string, children string) %}
+{% func PokedexTemplate(id, formID, inputID, value, children string) %}
   <div id="{%s id %}" class="flex justify-center">
-    <div class="grid grid-cols-3 gap-4">
-      {%s= children %}
+    <div class="flex flex-col gap-3">
+      <h1 class="text-7xl font-bold py-6 text-blue-900">Pokédex</h1>
+      <form id="{%s formID %}">
+        <input
+          id="{%s inputID %}"
+          name="{%s inputID %}"
+          type="text"
+          class="text-2xl border-2 border-blue-900 rounded-md w-full h-10 py-6 pl-3"
+          placeholder="Search Pokemon"
+          value="{%s value %}"
+        >
+      </form>
+      <div class="grid grid-cols-3 gap-4 pt-3">
+        {%s= children %}
+      </div>
     </div>
   </div>
 {% endfunc %}

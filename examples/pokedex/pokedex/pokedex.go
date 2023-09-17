@@ -2,22 +2,48 @@
 package pokedex
 
 import (
+	"context"
+	"encoding/json"
 	"github.com/cstevenson98/goFE/examples/pokedex/components/entry"
 	"github.com/cstevenson98/goFE/pkg/goFE"
 	"github.com/google/uuid"
+	fetch "marwan.io/wasm-fetch"
+	"strings"
+	"sync"
+	"syscall/js"
+	"time"
 )
 
 type Props struct{}
 
 type pokedexState struct {
-	listResult PokemonResultsList
+	allPokemon PokemonResultsList
+}
+
+func FilterResultByName(name *string, list PokemonResultsList) []int {
+	var out []int
+	for i, result := range list.Results {
+		if name == nil || strings.Contains(result.Name, *name) {
+			out = append(out, i+1)
+		}
+	}
+	return out
 }
 
 type Pokedex struct {
-	id       uuid.UUID
-	kill     chan bool
-	state    *goFE.State[pokedexState]
-	setState func(*pokedexState)
+	id               uuid.UUID
+	formID           uuid.UUID
+	inputID          uuid.UUID
+	killSwitches     map[uuid.UUID]chan bool
+	killLock         sync.Mutex
+	state            *goFE.State[pokedexState]
+	setState         func(*pokedexState)
+	searchTerm       *goFE.State[string]
+	setSearchTerm    func(*string)
+	searchResults    *goFE.State[[]int]
+	setSearchResults func(*[]int)
+
+	inputValue string
 
 	entries []*entry.Entry
 }
@@ -27,20 +53,48 @@ const (
 	initialLimit  = 25
 )
 
-func NewPokedex(props Props) *Pokedex {
+func NewPokedex(_ Props) *Pokedex {
 	pokedex := &Pokedex{
-		id:   uuid.New(),
-		kill: make(chan bool),
+		id:           uuid.New(),
+		formID:       uuid.New(),
+		inputID:      uuid.New(),
+		killSwitches: make(map[uuid.UUID]chan bool),
 	}
 
 	for i := initialOffset; i < initialOffset+initialLimit; i++ {
-		println(i)
 		pokedex.entries = append(pokedex.entries, entry.NewEntry(&entry.Props{
 			PokemonID: i + 1,
 		}))
 	}
 
 	pokedex.state, pokedex.setState = goFE.NewState[pokedexState](pokedex, &pokedexState{})
+	pokedex.searchResults, pokedex.setSearchResults = goFE.NewState[[]int](pokedex, &[]int{})
+	pokedex.searchTerm, pokedex.setSearchTerm = goFE.NewState[string](pokedex, nil)
+	pokedex.searchTerm.AddEffect(func(value *string) {
+		indices := FilterResultByName(value, pokedex.state.Value.allPokemon)
+		pokedex.setSearchResults(&indices)
+	})
+	pokedex.state.AddEffect(func(value *pokedexState) {
+		indices := FilterResultByName(pokedex.searchTerm.Value, value.allPokemon)
+		pokedex.setSearchResults(&indices)
+	})
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		res, err := fetch.Fetch(ListPokemonURL(-1, 0), &fetch.Opts{
+			Method: fetch.MethodGet,
+			Signal: ctx,
+		})
+		if err != nil {
+			println(err.Error())
+		}
+		var listResult PokemonResultsList
+		err = json.Unmarshal(res.Body, &listResult)
+		if err != nil {
+			println(err.Error())
+		}
+		pokedex.setState(&pokedexState{allPokemon: listResult})
+	}()
 	return pokedex
 }
 
@@ -49,8 +103,24 @@ func (p *Pokedex) GetID() uuid.UUID {
 }
 
 func (p *Pokedex) Render() string {
-	goFE.UpdateComponentArray[*entry.Entry, entry.Props](&p.entries, initialLimit, entry.NewEntry, nil)
-	return PokedexTemplate(p.id.String(), goFE.RenderChildren(p))
+	var newProps []*entry.Props
+	if p.searchResults.Value != nil {
+		for i, index := range *p.searchResults.Value {
+			newProps = append(newProps, &entry.Props{
+				PokemonID: index,
+			})
+			if i >= initialLimit {
+				break
+			}
+		}
+	}
+	goFE.UpdateComponentArray[*entry.Entry, entry.Props](&p.entries, len(newProps), entry.NewEntry, newProps)
+	value := p.searchTerm.Value
+	if value == nil {
+		newValue := ""
+		value = &newValue
+	}
+	return PokedexTemplate(p.id.String(), p.formID.String(), p.inputID.String(), *value, goFE.RenderChildren(p))
 }
 
 func (p *Pokedex) GetChildren() []goFE.Component {
@@ -61,8 +131,31 @@ func (p *Pokedex) GetChildren() []goFE.Component {
 	return out
 }
 
-func (p *Pokedex) GetKill() chan bool {
-	return p.kill
+func (p *Pokedex) GetKill(id uuid.UUID) chan bool {
+	return p.killSwitches[id]
 }
 
-func (p *Pokedex) InitEventListeners() {}
+func (p *Pokedex) AddKill(id uuid.UUID) {
+	p.killLock.Lock()
+	defer p.killLock.Unlock()
+	p.killSwitches[id] = make(chan bool)
+}
+
+func (p *Pokedex) KillAll() {
+	for _, killSwitch := range p.killSwitches {
+		killSwitch <- true
+	}
+}
+
+func (p *Pokedex) InitEventListeners() {
+	goFE.GetDocument().AddEventListener(p.formID, "submit", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		event := args[0]
+		event.Call("preventDefault")
+		p.setSearchTerm(&p.inputValue)
+		return nil
+	}))
+	goFE.GetDocument().AddEventListener(p.inputID, "input", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		p.inputValue = this.Get("value").String()
+		return nil
+	}))
+}

@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	fetch "marwan.io/wasm-fetch"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -34,8 +35,9 @@ type Pokemon struct {
 }
 
 type Entry struct {
-	id   uuid.UUID
-	kill chan bool
+	id           uuid.UUID
+	killSwitches map[uuid.UUID]chan bool
+	killLock     sync.Mutex
 
 	pokemon    *goFE.State[Pokemon]
 	setPokemon func(*Pokemon)
@@ -43,8 +45,8 @@ type Entry struct {
 
 func NewEntry(props *Props) *Entry {
 	entry := &Entry{
-		id:   uuid.New(),
-		kill: make(chan bool),
+		id:           uuid.New(),
+		killSwitches: make(map[uuid.UUID]chan bool),
 	}
 	entry.pokemon, entry.setPokemon = goFE.NewState[Pokemon](entry, nil)
 	go func() {
@@ -81,8 +83,22 @@ func (e *Entry) GetChildren() []goFE.Component {
 	return nil
 }
 
-func (e *Entry) GetKill() chan bool {
-	return e.kill
+func (e *Entry) GetKill(id uuid.UUID) chan bool {
+	return e.killSwitches[id]
+}
+
+func (e *Entry) AddKill(id uuid.UUID) {
+	e.killLock.Lock()
+	defer e.killLock.Unlock()
+	e.killSwitches[id] = make(chan bool)
+}
+
+func (e *Entry) KillAll() {
+	e.killLock.Lock()
+	defer e.killLock.Unlock()
+	for _, killSwitch := range e.killSwitches {
+		killSwitch <- true
+	}
 }
 
 func (e *Entry) InitEventListeners() {}
