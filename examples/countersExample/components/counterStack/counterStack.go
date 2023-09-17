@@ -30,7 +30,7 @@ type CounterStack struct {
 
 const randCounterMax = 50
 
-func NewApp(props Props) *CounterStack {
+func NewCounterStack(props Props) *CounterStack {
 	randInt := rand.Intn(randCounterMax)
 	var counters []*counter.Counter
 	for i := 0; i < randInt; i++ {

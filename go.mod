@@ -7,4 +7,5 @@ require github.com/valyala/quicktemplate v1.7.0
 require (
 	github.com/google/uuid v1.3.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	marwan.io/wasm-fetch v0.1.0 // indirect
 )

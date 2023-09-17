@@ -1,0 +1,3 @@
+{% func EntryTemplate(id string) %}
+  <div id="{%s id %}"> entry </div>
+{% endfunc %}
