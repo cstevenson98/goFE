@@ -25,7 +25,6 @@ type CounterStack struct {
 	state    *goFE.State[counterStackState]
 	setState func(*counterStackState)
 	counters []*counter.Counter
-	kill     chan bool
 }
 
 const randCounterMax = 50
@@ -42,7 +41,6 @@ func NewCounterStack(props Props) *CounterStack {
 		buttonID: uuid.New(),
 		props:    props,
 		counters: counters,
-		kill:     make(chan bool),
 	}
 	app.state, app.setState = goFE.NewState[counterStackState](app, &counterStackState{numberOfCounters: randInt})
 	return app
@@ -67,10 +65,6 @@ func (a *CounterStack) GetChildren() []goFE.Component {
 		children = append(children, child)
 	}
 	return children
-}
-
-func (a *CounterStack) GetKill() chan bool {
-	return a.kill
 }
 
 func (a *CounterStack) InitEventListeners() {

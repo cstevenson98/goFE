@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	fetch "marwan.io/wasm-fetch"
 	"strings"
-	"sync"
 	"syscall/js"
 	"time"
 )
@@ -34,8 +33,6 @@ type Pokedex struct {
 	id               uuid.UUID
 	formID           uuid.UUID
 	inputID          uuid.UUID
-	killSwitches     map[uuid.UUID]chan bool
-	killLock         sync.Mutex
 	state            *goFE.State[pokedexState]
 	setState         func(*pokedexState)
 	searchTerm       *goFE.State[string]
@@ -55,10 +52,9 @@ const (
 
 func NewPokedex(_ Props) *Pokedex {
 	pokedex := &Pokedex{
-		id:           uuid.New(),
-		formID:       uuid.New(),
-		inputID:      uuid.New(),
-		killSwitches: make(map[uuid.UUID]chan bool),
+		id:      uuid.New(),
+		formID:  uuid.New(),
+		inputID: uuid.New(),
 	}
 
 	for i := initialOffset; i < initialOffset+initialLimit; i++ {
@@ -78,7 +74,7 @@ func NewPokedex(_ Props) *Pokedex {
 		indices := FilterResultByName(pokedex.searchTerm.Value, value.allPokemon)
 		pokedex.setSearchResults(&indices)
 	})
-	go func() {
+	go func() { // Async fetch of all pokemon
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		res, err := fetch.Fetch(ListPokemonURL(-1, 0), &fetch.Opts{
@@ -129,22 +125,6 @@ func (p *Pokedex) GetChildren() []goFE.Component {
 		out = append(out, child)
 	}
 	return out
-}
-
-func (p *Pokedex) GetKill(id uuid.UUID) chan bool {
-	return p.killSwitches[id]
-}
-
-func (p *Pokedex) AddKill(id uuid.UUID) {
-	p.killLock.Lock()
-	defer p.killLock.Unlock()
-	p.killSwitches[id] = make(chan bool)
-}
-
-func (p *Pokedex) KillAll() {
-	for _, killSwitch := range p.killSwitches {
-		killSwitch <- true
-	}
 }
 
 func (p *Pokedex) InitEventListeners() {

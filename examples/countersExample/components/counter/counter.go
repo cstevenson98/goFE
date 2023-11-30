@@ -23,7 +23,6 @@ type Counter struct {
 
 	state    *goFE.State[counterState]
 	setState func(*counterState)
-	kill     chan bool
 }
 
 func NewCounter(props *Props) *Counter {
@@ -31,7 +30,6 @@ func NewCounter(props *Props) *Counter {
 		id:      uuid.New(),
 		lowerID: uuid.New(),
 		raiseID: uuid.New(),
-		kill:    make(chan bool),
 	}
 	newCounter.state, newCounter.setState = goFE.NewState[counterState](newCounter, &counterState{count: 0})
 	return newCounter
@@ -43,10 +41,6 @@ func (c *Counter) GetID() uuid.UUID {
 
 func (c *Counter) GetChildren() []goFE.Component {
 	return nil
-}
-
-func (c *Counter) GetKill() chan bool {
-	return c.kill
 }
 
 func (c *Counter) InitEventListeners() {
