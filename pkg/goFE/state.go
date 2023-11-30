@@ -11,7 +11,6 @@ var stateKillChannels map[uuid.UUID]map[uuid.UUID]chan bool
 
 func init() {
 	println("Initializing states map")
-	stateLock = sync.Mutex{}
 	stateKillChannels = make(map[uuid.UUID]map[uuid.UUID]chan bool)
 	// A go-routine to just print total number of components * states every 5 seconds
 	go func() {
@@ -28,8 +27,6 @@ func init() {
 
 func registerComponentIfNotExists(component Component) {
 	println("Registering component if not exists, componentID: ", component.GetID().String())
-	//stateLock.Lock()
-	//defer stateLock.Unlock()
 	if _, ok := stateKillChannels[component.GetID()]; !ok {
 		stateKillChannels[component.GetID()] = make(map[uuid.UUID]chan bool)
 	}
@@ -71,6 +68,9 @@ type State[T any] struct {
 // NewState creates a new instance of frontend state. It returns a pointer to the
 // new state, with initial value, and a function to set the state.
 func NewState[T any](component Component, value *T) (*State[T], func(*T)) {
+	if &stateLock == nil {
+		stateLock = sync.Mutex{}
+	}
 	println("Creating new state, componentID: ", component.GetID().String())
 	newState := &State[T]{
 		Value:     value,
@@ -82,7 +82,6 @@ func NewState[T any](component Component, value *T) (*State[T], func(*T)) {
 		newState.ch <- newValue
 	}
 	registerKillChannel(component, newState)
-	//component.AddKill(newState.id) // TODO : just add to a global map of components to maps of kill channels
 	go listenForStateChange[T](component, newState)
 	return newState, setState
 }
