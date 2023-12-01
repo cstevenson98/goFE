@@ -7,7 +7,9 @@ import (
 
 func main() {
 	// Instantiate a new Document
-	goFE.Init()
+	goFE.Init(&goFE.Logger{
+		Level: goFE.DEBUG,
+	})
 	goFE.SetDocument(goFE.NewDocument([]goFE.Component{
 		pokedex.NewPokedex(pokedex.Props{}),
 	}))

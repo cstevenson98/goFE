@@ -10,9 +10,7 @@ var stateLock sync.Mutex
 var stateKillChannels map[uuid.UUID]map[uuid.UUID]chan bool
 
 func init() {
-	logger.Log(DEBUG, "Initializing state")
 	stateKillChannels = make(map[uuid.UUID]map[uuid.UUID]chan bool)
-	// A go-routine to just print total number of components * states every 5 seconds
 	go func() {
 		for {
 			total := 0
