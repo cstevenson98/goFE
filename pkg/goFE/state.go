@@ -10,7 +10,7 @@ var stateLock sync.Mutex
 var stateKillChannels map[uuid.UUID]map[uuid.UUID]chan bool
 
 func init() {
-	println("Initializing states map")
+	logger.Log(DEBUG, "Initializing state")
 	stateKillChannels = make(map[uuid.UUID]map[uuid.UUID]chan bool)
 	// A go-routine to just print total number of components * states every 5 seconds
 	go func() {
@@ -19,7 +19,7 @@ func init() {
 			for _, componentMap := range stateKillChannels {
 				total += len(componentMap)
 			}
-			println("Total number of components * states: ", total)
+			println("Total number of kill channels", total)
 			<-time.After(5 * time.Second)
 		}
 	}()
@@ -34,7 +34,7 @@ func registerComponentIfNotExists(component Component) {
 }
 
 func registerKillChannel[T any](component Component, state *State[T]) {
-	println("Registering kill channel, componentID: ", component.GetID().String())
+	logger.Log(DEBUG, "Registering kill channel, componentID: "+component.GetID().String())
 	stateLock.Lock()
 	defer stateLock.Unlock()
 	registerComponentIfNotExists(component)
@@ -44,7 +44,7 @@ func registerKillChannel[T any](component Component, state *State[T]) {
 }
 
 func killAllStates(component Component) {
-	println("Killing all states, componentID: ", component.GetID().String())
+	logger.Log(DEBUG, "Killing all states, componentID: "+component.GetID().String())
 	stateLock.Lock()
 	defer stateLock.Unlock()
 	if _, ok := stateKillChannels[component.GetID()]; ok {
@@ -52,6 +52,8 @@ func killAllStates(component Component) {
 			killCh <- true
 		}
 		delete(stateKillChannels, component.GetID())
+	} else {
+		logger.Log(WARNING, "No states to kill, componentID: "+component.GetID().String())
 	}
 }
 
@@ -71,7 +73,7 @@ func NewState[T any](component Component, value *T) (*State[T], func(*T)) {
 	if &stateLock == nil {
 		stateLock = sync.Mutex{}
 	}
-	println("Creating new state, componentID: ", component.GetID().String())
+	logger.Log(DEBUG, "Creating new state, componentID: "+component.GetID().String())
 	newState := &State[T]{
 		Value:     value,
 		id:        uuid.New(),
@@ -90,13 +92,13 @@ func NewState[T any](component Component, value *T) (*State[T], func(*T)) {
 // whenever the state changes.
 func (s *State[T]) AddEffect(effect func(value *T)) {
 	s.lock.Lock()
+	defer s.lock.Unlock()
 	s.listeners[uuid.New()] = effect
-	s.lock.Unlock()
 }
 
 // listenForStateChange listens for state changes and updates the state accordingly.
 func listenForStateChange[T any](component Component, state *State[T]) {
-	println("Listening for state change, componentID: ", component.GetID().String())
+	logger.Log(DEBUG, "Listening for state change, componentID: "+component.GetID().String())
 	for {
 		select {
 		case value := <-state.ch:
@@ -112,7 +114,7 @@ func listenForStateChange[T any](component Component, state *State[T]) {
 			for _, child := range component.GetChildren() {
 				killAllStates(child)
 			}
-			println("Stopped listening for state change, componentID: ", component.GetID().String())
+			logger.Log(DEBUG, "Stopped listening for state change, componentID: "+component.GetID().String())
 			return
 		}
 	}
@@ -121,10 +123,10 @@ func listenForStateChange[T any](component Component, state *State[T]) {
 // notifyListeners notifies all listeners of a state change.
 func notifyListeners[T any](state *State[T]) {
 	state.lock.Lock()
+	defer state.lock.Unlock()
 	for _, listener := range state.listeners {
 		go listener(state.Value)
 	}
-	state.lock.Unlock()
 }
 
 // UpdateComponentArray provides functionality to control a variable-length collection of components,

@@ -17,9 +17,15 @@ type Document struct {
 
 // global document
 var document *Document
+var logger *Logger
 
-func Init() {
+func Init(loggerInit *Logger) {
 	// Listen for any re-render events
+	if loggerInit != nil {
+		logger = loggerInit
+	} else {
+		logger = &Logger{Level: INFO}
+	}
 	go func() {
 		for {
 			select {
@@ -49,6 +55,7 @@ func NewDocument(componentTree []Component) *Document {
 }
 
 func (d *Document) Init() {
+	logger.Log(DEBUG, "Initializing document")
 	var buffer string
 	for _, component := range d.componentTree {
 		buffer += component.Render()
@@ -67,7 +74,7 @@ func (d *Document) Append(component Component) {
 }
 
 func (d *Document) AddEventListener(id uuid.UUID, event string, callback js.Func) {
-	println("Adding event listener for component with id: " + id.String())
+	logger.Log(DEBUG, "Adding event listener for component with id: "+id.String())
 	js.Global().Get("document").Call("getElementById", id.String()).Call("addEventListener", event, callback)
 }
 
