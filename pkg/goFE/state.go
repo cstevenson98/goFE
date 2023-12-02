@@ -24,11 +24,11 @@ func init() {
 }
 
 func registerComponentIfNotExists(component Component) {
-	println("Registering component if not exists, componentID: ", component.GetID().String())
+	logger.Log(DEBUG, "Registering component if not exists, componentID: "+component.GetID().String())
 	if _, ok := stateKillChannels[component.GetID()]; !ok {
 		stateKillChannels[component.GetID()] = make(map[uuid.UUID]chan bool)
 	}
-	println("Registered component: ", component.GetID().String())
+	logger.Log(DEBUG, "Registered component: "+component.GetID().String())
 }
 
 func registerKillChannel[T any](component Component, state *State[T]) {
@@ -51,7 +51,7 @@ func killAllStates(component Component) {
 		}
 		delete(stateKillChannels, component.GetID())
 	} else {
-		logger.Log(WARNING, "No states to kill, componentID: "+component.GetID().String())
+		logger.Log(DEBUG, "No states to kill, componentID: "+component.GetID().String())
 	}
 }
 
@@ -81,7 +81,6 @@ func NewState[T any](component Component, value *T) (*State[T], func(*T)) {
 	setState := func(newValue *T) {
 		newState.ch <- newValue
 	}
-	registerKillChannel(component, newState)
 	go listenForStateChange[T](component, newState)
 	return newState, setState
 }
@@ -97,6 +96,7 @@ func (s *State[T]) AddEffect(effect func(value *T)) {
 // listenForStateChange listens for state changes and updates the state accordingly.
 func listenForStateChange[T any](component Component, state *State[T]) {
 	logger.Log(DEBUG, "Listening for state change, componentID: "+component.GetID().String())
+	registerKillChannel(component, state)
 	for {
 		select {
 		case value := <-state.ch:
@@ -107,8 +107,7 @@ func listenForStateChange[T any](component Component, state *State[T]) {
 			document.renderNotifier <- component
 			notifyListeners[T](state)
 		case <-state.kill:
-			//println("Stopped listening for state change, componentID: ", component.GetID().String())
-			// kill child components
+			logger.Log(DEBUG, "Stopped listening for state change, componentID: "+component.GetID().String())
 			for _, child := range component.GetChildren() {
 				killAllStates(child)
 			}

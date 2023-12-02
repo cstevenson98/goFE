@@ -45,12 +45,10 @@ func (c *Counter) GetChildren() []goFE.Component {
 
 func (c *Counter) InitEventListeners() {
 	goFE.GetDocument().AddEventListener(c.lowerID, "click", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		println("Clicked button")
 		c.setState(&counterState{count: c.state.Value.count - 1})
 		return nil
 	}))
 	goFE.GetDocument().AddEventListener(c.raiseID, "click", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		println("Clicked button")
 		c.setState(&counterState{count: c.state.Value.count + 1})
 		return nil
 	}))
