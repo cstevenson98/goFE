@@ -45,16 +45,12 @@ func (w *Websocket) MessageChan() chan []byte {
 	return w.messages
 }
 
-func (w *Websocket) Send(data interface{}) {
+func (w *Websocket) Send(data string) {
+	println("trying to send")
 	w.socket.Call("send", data)
 }
 
 func (w *Websocket) Close() error {
 	w.socket.Call("close", closeNormalClosure)
 	return nil
-}
-
-func (w *Websocket) Write(b []byte) (n int, err error) {
-	w.Send(b)
-	return len(b), nil
 }
