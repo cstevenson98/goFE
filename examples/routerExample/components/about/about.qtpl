@@ -1,0 +1,40 @@
+{% func AboutTemplate(id string) %}
+<div id="{%s id %}" class="max-w-4xl mx-auto">
+  <h2 class="text-2xl font-bold mb-6">About GoFE</h2>
+  
+  <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+    <p class="text-lg mb-4">
+      GoFE is a lightweight WebAssembly-based frontend framework for Go.
+    </p>
+    
+    <h3 class="text-xl font-semibold mb-3">Key Features:</h3>
+    
+    <ul class="list-disc ml-8 mb-4">
+      <li class="mb-2">
+        <strong>Component-Based Architecture:</strong> 
+        Build UIs with reusable and composable components
+      </li>
+      <li class="mb-2">
+        <strong>State Management:</strong> 
+        Type-safe state with generics and automatic re-rendering
+      </li>
+      <li class="mb-2">
+        <strong>Event Handling:</strong> 
+        Simple DOM event binding through WebAssembly
+      </li>
+      <li class="mb-2">
+        <strong>Dynamic Component Arrays:</strong> 
+        Efficiently manage lists of components
+      </li>
+      <li class="mb-2">
+        <strong>Templating:</strong> 
+        HTML generation with QuickTemplate
+      </li>
+      <li class="mb-2">
+        <strong>Minimal Dependencies:</strong> 
+        Small WASM binary size for fast loading
+      </li>
+    </ul>
+  </div>
+</div>
+{% endfunc %} 

@@ -1,0 +1,27 @@
+{% func RouterTemplate(id string, navContainerId string, contentAreaId string, viewContent string, currentPath string) %}
+<div id="{%s id %}" class="flex flex-col min-h-screen">
+  <header class="bg-blue-600 text-white p-4">
+    <div class="container mx-auto">
+      <h1 class="text-3xl font-bold">GoFE Router Example</h1>
+    </div>
+  </header>
+  
+  <nav id="{%s navContainerId %}" class="bg-blue-500 text-white">
+    <div class="container mx-auto flex">
+      <a href="/" class="py-4 px-6 hover:bg-blue-700 {% if currentPath == "/" %}bg-blue-700{% endif %}">Home</a>
+      <a href="/about" class="py-4 px-6 hover:bg-blue-700 {% if currentPath == "/about" %}bg-blue-700{% endif %}">About</a>
+      <a href="/contact" class="py-4 px-6 hover:bg-blue-700 {% if currentPath == "/contact" %}bg-blue-700{% endif %}">Contact</a>
+    </div>
+  </nav>
+  
+  <main id="{%s contentAreaId %}" class="container mx-auto flex-grow p-4">
+    {%s= viewContent %}
+  </main>
+  
+  <footer class="bg-gray-200 p-4 text-center text-gray-600">
+    <div class="container mx-auto">
+      <p>&copy; 2023 GoFE Router Example</p>
+    </div>
+  </footer>
+</div>
+{% endfunc %} 

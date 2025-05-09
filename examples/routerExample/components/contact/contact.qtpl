@@ -1,0 +1,83 @@
+{% func ContactTemplate(id, formID, nameID, emailID, messageID, submitID, name, email, message string, submitted bool) %}
+<div id="{%s id %}" class="max-w-4xl mx-auto">
+  <h2 class="text-2xl font-bold mb-6">Contact Us</h2>
+  
+  {% if submitted %}
+  <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+    <h3 class="font-bold">Thank you for your message!</h3>
+    <p class="mt-2">We've received your contact information and will respond shortly.</p>
+    
+    <div class="mt-4 mb-2">
+      <h4 class="font-bold">Your submission:</h4>
+      <p><strong>Name:</strong> {%s name %}</p>
+      <p><strong>Email:</strong> {%s email %}</p>
+      <p><strong>Message:</strong> {%s message %}</p>
+    </div>
+    
+    <button 
+      id="{%s submitID %}" 
+      class="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+    >
+      Send Another Message
+    </button>
+  </div>
+  {% else %}
+  <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+    <p class="text-lg mb-6">
+      Have questions about GoFE? Fill out the form below to get in touch.
+    </p>
+    
+    <form id="{%s formID %}">
+      <div class="mb-4">
+        <label class="block text-gray-700 text-sm font-bold mb-2" for="{%s nameID %}">
+          Name
+        </label>
+        <input 
+          id="{%s nameID %}" 
+          type="text" 
+          value="{%s name %}"
+          class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+          placeholder="Your name"
+          required
+        />
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-gray-700 text-sm font-bold mb-2" for="{%s emailID %}">
+          Email
+        </label>
+        <input 
+          id="{%s emailID %}" 
+          type="email" 
+          value="{%s email %}"
+          class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+          placeholder="Your email"
+          required
+        />
+      </div>
+      
+      <div class="mb-6">
+        <label class="block text-gray-700 text-sm font-bold mb-2" for="{%s messageID %}">
+          Message
+        </label>
+        <textarea 
+          id="{%s messageID %}" 
+          class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline h-32" 
+          placeholder="Your message"
+          required
+        >{%s message %}</textarea>
+      </div>
+      
+      <div class="flex items-center justify-between">
+        <button 
+          type="submit" 
+          class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+        >
+          Send Message
+        </button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endfunc %} 

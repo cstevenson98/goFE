@@ -1,0 +1,27 @@
+{% func HomeTemplate(id string) %}
+<div id="{%s id %}" class="max-w-4xl mx-auto">
+  <h2 class="text-2xl font-bold mb-6">Welcome to the GoFE Router Example</h2>
+  
+  <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+    <p class="text-lg mb-4">
+      This example demonstrates a simple client-side router implementation using GoFE.
+    </p>
+    
+    <p class="mb-4">
+      The router manages navigation between different views without full page reloads.
+      It supports:
+    </p>
+    
+    <ul class="list-disc ml-8 mb-4">
+      <li class="mb-2">Client-side routing with browser history</li>
+      <li class="mb-2">Back/forward button navigation</li>
+      <li class="mb-2">Dynamic component mounting/unmounting</li>
+      <li class="mb-2">Active route highlighting</li>
+    </ul>
+    
+    <p>
+      Click on different navigation links to see the router in action.
+    </p>
+  </div>
+</div>
+{% endfunc %} 
