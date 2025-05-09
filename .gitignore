@@ -1,4 +1,8 @@
 .idea
-index/main.wasm
+.vscode
 # ignore all .qtpl.go
 *.qtpl.go
+
+# ignore all .wasm files
+*.wasm  
+
