@@ -6,6 +6,7 @@ import (
 	"github.com/cstevenson98/goFE/examples/routerExample/components/about"
 	"github.com/cstevenson98/goFE/examples/routerExample/components/contact"
 	"github.com/cstevenson98/goFE/examples/routerExample/components/home"
+	"github.com/cstevenson98/goFE/examples/pokedex/pokedex"
 	"github.com/cstevenson98/goFE/pkg/goFE"
 	"github.com/google/uuid"
 	"syscall/js"
@@ -47,6 +48,7 @@ func NewRouter(_ Props) *Router {
 			"/":        func() goFE.Component { return home.NewHome(home.Props{}) },
 			"/about":   func() goFE.Component { return about.NewAbout(about.Props{}) },
 			"/contact": func() goFE.Component { return contact.NewContact(contact.Props{}) },
+			"/pokedex": func() goFE.Component { return pokedex.NewPokedex(pokedex.Props{}) },
 		},
 	}
 

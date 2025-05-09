@@ -11,6 +11,7 @@
       <a href="/" class="py-4 px-6 hover:bg-blue-700 {% if currentPath == "/" %}bg-blue-700{% endif %}">Home</a>
       <a href="/about" class="py-4 px-6 hover:bg-blue-700 {% if currentPath == "/about" %}bg-blue-700{% endif %}">About</a>
       <a href="/contact" class="py-4 px-6 hover:bg-blue-700 {% if currentPath == "/contact" %}bg-blue-700{% endif %}">Contact</a>
+      <a href="/pokedex" class="py-4 px-6 hover:bg-blue-700 {% if currentPath == "/pokedex" %}bg-blue-700{% endif %}">Pokédex</a>
     </div>
   </nav>
   
@@ -20,7 +21,7 @@
   
   <footer class="bg-gray-200 p-4 text-center text-gray-600">
     <div class="container mx-auto">
-      <p>&copy; 2023 GoFE Router Example</p>
+      <p>&copy; 2025 Conor Stevenson GoFE Router Example</p>
     </div>
   </footer>
 </div>
