@@ -1,0 +1,17 @@
+package components
+
+import "github.com/cstevenson98/goFE/pkg/goFE"
+
+type CounterProps struct {
+	InitialCount int
+}
+
+func Counter(props *CounterProps) string {
+	return `:begin-gox:
+<div>
+	<h1>Counter: {props.InitialCount}</h1>
+	<Button Text="Increment" OnClick={() => setCount(count + 1)} />
+	<Button Text="Decrement" OnClick={() => setCount(count - 1)} />
+</div>
+:end-gox:`
+} 

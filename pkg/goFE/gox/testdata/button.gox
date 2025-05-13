@@ -1,0 +1,14 @@
+package components
+
+import "github.com/cstevenson98/goFE/pkg/goFE"
+
+type ButtonProps struct {
+	Text string
+	OnClick func()
+}
+
+func Button(props *ButtonProps) string {
+	return `:begin-gox:
+<button onClick={props.OnClick}>{props.Text}</button>
+:end-gox:`
+} 

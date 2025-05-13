@@ -1,0 +1,12 @@
+package components
+
+import "github.com/cstevenson98/goFE/pkg/goFE"
+
+type ButtonProps struct {
+	Text string
+	OnClick func()
+}
+
+func Button(props *ButtonProps) ComponentWrapper {
+	return $`<button onClick={props.OnClick}>{props.Text}</button>`
+} 
