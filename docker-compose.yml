@@ -9,3 +9,14 @@ services:
     volumes:
       - ./index:/usr/share/nginx/html
       - ./index/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - messageboard
+
+  messageboard:
+    build:
+      context: ./backends/message-board
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - GIN_MODE=release

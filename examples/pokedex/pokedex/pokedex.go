@@ -4,13 +4,14 @@ package pokedex
 import (
 	"context"
 	"encoding/json"
+	"strings"
+	"syscall/js"
+	"time"
+
 	"github.com/cstevenson98/goFE/examples/pokedex/components/entry"
 	"github.com/cstevenson98/goFE/pkg/goFE"
 	"github.com/google/uuid"
 	fetch "marwan.io/wasm-fetch"
-	"strings"
-	"syscall/js"
-	"time"
 )
 
 type Props struct{}
@@ -74,6 +75,7 @@ func NewPokedex(_ Props) *Pokedex {
 		indices := FilterResultByName(pokedex.searchTerm.Value, value.allPokemon)
 		pokedex.setSearchResults(&indices)
 	})
+
 	go func() { // Async fetch of all pokemon
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -91,6 +93,7 @@ func NewPokedex(_ Props) *Pokedex {
 		}
 		pokedex.setState(&pokedexState{allPokemon: listResult})
 	}()
+
 	return pokedex
 }
 

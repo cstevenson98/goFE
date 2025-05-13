@@ -12,6 +12,7 @@
       <a href="/about" class="py-4 px-6 hover:bg-blue-700 {% if currentPath == "/about" %}bg-blue-700{% endif %}">About</a>
       <a href="/contact" class="py-4 px-6 hover:bg-blue-700 {% if currentPath == "/contact" %}bg-blue-700{% endif %}">Contact</a>
       <a href="/pokedex" class="py-4 px-6 hover:bg-blue-700 {% if currentPath == "/pokedex" %}bg-blue-700{% endif %}">Pokédex</a>
+      <a href="/messageboard" class="py-4 px-6 hover:bg-blue-700 {% if currentPath == "/messageboard" %}bg-blue-700{% endif %}">Message Board</a>
     </div>
   </nav>
   
