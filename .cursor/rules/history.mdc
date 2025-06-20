@@ -1,0 +1,19 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+- Add entries to the "## modifications" section when making changes
+- Use ✨ for new features
+- Use 🐛 for bug fixes
+- Use 📊 for test-related changes
+- Use 📚 for documentation changes
+- Use 📈 for data changes
+- Include date in YYYY-MM-DD format
+- Add entries in chronological order (newest at top)
+- Be specific but concise in descriptions
+- Group related changes together
+- Always use bash to get the datetime before writing to history: `date +%Y-%m-%d`
+- project history will always be at .cursor/rules/project-history.md
+
+[project-history.md](mdc:.cursor/rules/project-history.md)
