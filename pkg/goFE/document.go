@@ -1,8 +1,9 @@
 package goFE
 
 import (
-	"github.com/google/uuid"
 	"syscall/js"
+
+	"github.com/google/uuid"
 )
 
 const renderNotifierBufferSize = 100
@@ -75,7 +76,12 @@ func (d *Document) Append(component Component) {
 
 func (d *Document) AddEventListener(id uuid.UUID, event string, callback js.Func) {
 	logger.Log(DEBUG, "Adding event listener for component with id: "+id.String())
-	js.Global().Get("document").Call("getElementById", id.String()).Call("addEventListener", event, callback)
+	element := js.Global().Get("document").Call("getElementById", id.String())
+	if element.IsNull() || element.IsUndefined() {
+		logger.Log(WARNING, "Element not found for id: "+id.String())
+		return
+	}
+	element.Call("addEventListener", event, callback)
 }
 
 func initListeners(components []Component) {

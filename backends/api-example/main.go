@@ -23,21 +23,33 @@ func main() {
 
 	r := mux.NewRouter()
 
+	// Apply CORS middleware first
+	r.Use(corsMiddleware)
+
 	// User routes
-	r.HandleFunc("/api/users", getUsers).Methods("GET")
+	r.HandleFunc("/api/users", getUsers).Methods("GET", "HEAD")
 	r.HandleFunc("/api/users", createUser).Methods("POST")
-	r.HandleFunc("/api/users/{id}", getUser).Methods("GET")
+	r.HandleFunc("/api/users/{id}", getUser).Methods("GET", "HEAD")
 	r.HandleFunc("/api/users/{id}", updateUser).Methods("PUT")
 	r.HandleFunc("/api/users/{id}", deleteUser).Methods("DELETE")
 
 	// Message routes
-	r.HandleFunc("/api/messages", getMessages).Methods("GET")
+	r.HandleFunc("/api/messages", getMessages).Methods("GET", "HEAD")
 	r.HandleFunc("/api/messages", createMessage).Methods("POST")
-	r.HandleFunc("/api/messages/{id}", getMessage).Methods("GET")
+	r.HandleFunc("/api/messages/{id}", getMessage).Methods("GET", "HEAD")
 	r.HandleFunc("/api/messages/{id}", deleteMessage).Methods("DELETE")
 
-	// CORS middleware
-	r.Use(corsMiddleware)
+	// Health check endpoint
+	r.HandleFunc("/health", healthCheck).Methods("GET")
+
+	// Endpoints documentation
+	r.HandleFunc("/endpoints", getEndpoints).Methods("GET")
+
+	// Handle OPTIONS requests for specific routes
+	r.HandleFunc("/api/users", handleOptions).Methods("OPTIONS")
+	r.HandleFunc("/api/users/{id}", handleOptions).Methods("OPTIONS")
+	r.HandleFunc("/api/messages", handleOptions).Methods("OPTIONS")
+	r.HandleFunc("/api/messages/{id}", handleOptions).Methods("OPTIONS")
 
 	fmt.Println("API server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", r))
@@ -56,6 +68,13 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func handleOptions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	w.WriteHeader(http.StatusOK)
 }
 
 func initializeSampleData() {
@@ -370,6 +389,219 @@ func deleteMessage(w http.ResponseWriter, r *http.Request) {
 		Data:    map[string]interface{}{"id": messageID},
 		Success: true,
 		Message: "Message deleted successfully",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func healthCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+}
+
+type EndpointInfo struct {
+	Path        string      `json:"path"`
+	Method      string      `json:"method"`
+	Description string      `json:"description"`
+	Example     interface{} `json:"example,omitempty"`
+}
+
+type EndpointsResponse struct {
+	Endpoints []EndpointInfo `json:"endpoints"`
+	Total     int            `json:"total"`
+}
+
+func getEndpoints(w http.ResponseWriter, r *http.Request) {
+	endpoints := []EndpointInfo{
+		{
+			Path:        "/health",
+			Method:      "GET",
+			Description: "Health check endpoint",
+			Example: map[string]interface{}{
+				"status": "healthy",
+			},
+		},
+		{
+			Path:        "/api/users",
+			Method:      "GET",
+			Description: "Get all users",
+			Example: map[string]interface{}{
+				"data": map[string]interface{}{
+					"users": []map[string]interface{}{
+						{
+							"id":         "uuid-string",
+							"email":      "john@example.com",
+							"name":       "John Doe",
+							"created_at": "2025-07-04T21:14:18.055694798Z",
+							"updated_at": "2025-07-04T21:14:18.055695044Z",
+						},
+					},
+					"total": 1,
+				},
+				"success": true,
+				"message": "Users retrieved successfully",
+			},
+		},
+		{
+			Path:        "/api/users",
+			Method:      "POST",
+			Description: "Create a new user",
+			Example: map[string]interface{}{
+				"request": map[string]interface{}{
+					"email": "newuser@example.com",
+					"name":  "New User",
+				},
+				"response": map[string]interface{}{
+					"data": map[string]interface{}{
+						"user": map[string]interface{}{
+							"id":         "uuid-string",
+							"email":      "newuser@example.com",
+							"name":       "New User",
+							"created_at": "2025-07-04T21:14:18.055694798Z",
+							"updated_at": "2025-07-04T21:14:18.055695044Z",
+						},
+					},
+					"success": true,
+					"message": "User created successfully",
+				},
+			},
+		},
+		{
+			Path:        "/api/users/{id}",
+			Method:      "GET",
+			Description: "Get a specific user by ID",
+			Example: map[string]interface{}{
+				"data": map[string]interface{}{
+					"user": map[string]interface{}{
+						"id":         "uuid-string",
+						"email":      "john@example.com",
+						"name":       "John Doe",
+						"created_at": "2025-07-04T21:14:18.055694798Z",
+						"updated_at": "2025-07-04T21:14:18.055695044Z",
+					},
+				},
+				"success": true,
+				"message": "User retrieved successfully",
+			},
+		},
+		{
+			Path:        "/api/users/{id}",
+			Method:      "PUT",
+			Description: "Update a user by ID",
+			Example: map[string]interface{}{
+				"request": map[string]interface{}{
+					"name": "Updated Name",
+				},
+				"response": map[string]interface{}{
+					"data": map[string]interface{}{
+						"user": map[string]interface{}{
+							"id":         "uuid-string",
+							"email":      "john@example.com",
+							"name":       "Updated Name",
+							"created_at": "2025-07-04T21:14:18.055694798Z",
+							"updated_at": "2025-07-04T21:14:18.055695044Z",
+						},
+					},
+					"success": true,
+					"message": "User updated successfully",
+				},
+			},
+		},
+		{
+			Path:        "/api/users/{id}",
+			Method:      "DELETE",
+			Description: "Delete a user by ID",
+			Example: map[string]interface{}{
+				"data": map[string]interface{}{
+					"id": "uuid-string",
+				},
+				"success": true,
+				"message": "User deleted successfully",
+			},
+		},
+		{
+			Path:        "/api/messages",
+			Method:      "GET",
+			Description: "Get all messages (supports pagination with ?page=1&page_size=10)",
+			Example: map[string]interface{}{
+				"data": map[string]interface{}{
+					"messages": []map[string]interface{}{
+						{
+							"id":         "uuid-string",
+							"content":    "Hello, this is a test message!",
+							"user_id":    "user-uuid-string",
+							"created_at": "2025-07-04T21:14:18.055694798Z",
+						},
+					},
+					"total": 1,
+				},
+				"success": true,
+				"message": "Messages retrieved successfully",
+			},
+		},
+		{
+			Path:        "/api/messages",
+			Method:      "POST",
+			Description: "Create a new message",
+			Example: map[string]interface{}{
+				"request": map[string]interface{}{
+					"content": "This is a new message",
+					"user_id": "user-uuid-string",
+				},
+				"response": map[string]interface{}{
+					"data": map[string]interface{}{
+						"message": map[string]interface{}{
+							"id":         "uuid-string",
+							"content":    "This is a new message",
+							"user_id":    "user-uuid-string",
+							"created_at": "2025-07-04T21:14:18.055694798Z",
+						},
+					},
+					"success": true,
+					"message": "Message created successfully",
+				},
+			},
+		},
+		{
+			Path:        "/api/messages/{id}",
+			Method:      "GET",
+			Description: "Get a specific message by ID",
+			Example: map[string]interface{}{
+				"data": map[string]interface{}{
+					"message": map[string]interface{}{
+						"id":         "uuid-string",
+						"content":    "Hello, this is a test message!",
+						"user_id":    "user-uuid-string",
+						"created_at": "2025-07-04T21:14:18.055694798Z",
+					},
+				},
+				"success": true,
+				"message": "Message retrieved successfully",
+			},
+		},
+		{
+			Path:        "/api/messages/{id}",
+			Method:      "DELETE",
+			Description: "Delete a message by ID",
+			Example: map[string]interface{}{
+				"data": map[string]interface{}{
+					"id": "uuid-string",
+				},
+				"success": true,
+				"message": "Message deleted successfully",
+			},
+		},
+	}
+
+	response := shared.APIResponse[EndpointsResponse]{
+		Data: EndpointsResponse{
+			Endpoints: endpoints,
+			Total:     len(endpoints),
+		},
+		Success: true,
+		Message: "API endpoints retrieved successfully",
 	}
 
 	w.Header().Set("Content-Type", "application/json")

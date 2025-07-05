@@ -14,5 +14,9 @@ fetch:
 	go generate ./...
 	tinygo build --no-debug -o index/main.wasm -target wasm examples/fetchExample/main.go
 
+api:
+	go generate ./...
+	tinygo build --no-debug -o index/main.wasm -target wasm examples/apiExample/main.go
+
 clean:
 	rm -rf index/main.wasm
