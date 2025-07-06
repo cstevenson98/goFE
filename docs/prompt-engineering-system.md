@@ -76,7 +76,6 @@ Always respond with valid JSON in this exact structure:
 MUSICAL GUIDELINES:
 - Use proper LilyPond syntax
 - Include appropriate clefs, time signatures, and key signatures
-- Maintain consistent voice leading
 - Follow standard musical notation conventions
 - Provide context for complex musical decisions`
 ```

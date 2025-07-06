@@ -1,103 +1,120 @@
 #!/bin/bash
 
-# Test script for Music Composition Assistant API
+# Test script for the Music Assistant integration
+# This script tests the connection between LilyPond and prompt engine
 
+echo "Testing Music Assistant Integration"
+echo "=================================="
+
+# Base URL
 BASE_URL="http://localhost:8081"
 
-echo "🎵 Testing Music Composition Assistant API"
-echo "=========================================="
-
-# Test health check
+# Test 1: Health check
 echo -e "\n1. Testing health check..."
 curl -s "$BASE_URL/health" | jq '.'
 
-# Test document creation
-echo -e "\n2. Testing document creation..."
-DOC_RESPONSE=$(curl -s -X POST "$BASE_URL/api/documents" \
+# Test 2: Chat with music assistant - compose a piece
+echo -e "\n2. Testing music assistant chat - composition..."
+COMPOSE_RESPONSE=$(curl -s -X POST "$BASE_URL/api/music-assistant/chat" \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "Test Music Score",
-    "content": "\\documentclass{article}\\begin{document}Test music content\\end{document}"
+    "message": "Create a simple C major scale in 4/4 time",
+    "context": {
+      "style": "classical",
+      "tempo": "moderate"
+    }
   }')
 
-echo "$DOC_RESPONSE" | jq '.'
-DOC_ID=$(echo "$DOC_RESPONSE" | jq -r '.data.id')
+echo "Compose Response:"
+echo "$COMPOSE_RESPONSE" | jq '.'
 
-# Test document retrieval
-echo -e "\n3. Testing document retrieval..."
-curl -s "$BASE_URL/api/documents/$DOC_ID" | jq '.'
+# Extract the new content if successful
+NEW_CONTENT=$(echo "$COMPOSE_RESPONSE" | jq -r '.data.newContent // empty')
+if [ -n "$NEW_CONTENT" ]; then
+    echo -e "\nGenerated LilyPond content:"
+    echo "$NEW_CONTENT"
+    
+    # Test 3: Chat with music assistant - analyze the piece
+    echo -e "\n3. Testing music assistant chat - analysis..."
+    ANALYSIS_RESPONSE=$(curl -s -X POST "$BASE_URL/api/music-assistant/chat" \
+      -H "Content-Type: application/json" \
+      -d "{
+        \"message\": \"Analyze this musical piece: $NEW_CONTENT\",
+        \"context\": {
+          \"focus\": \"harmonic analysis\"
+        }
+      }")
+    
+    echo "Analysis Response:"
+    echo "$ANALYSIS_RESPONSE" | jq '.'
+    
+    # Test 4: Chat with music assistant - get suggestions
+    echo -e "\n4. Testing music assistant chat - suggestions..."
+    SUGGEST_RESPONSE=$(curl -s -X POST "$BASE_URL/api/music-assistant/chat" \
+      -H "Content-Type: application/json" \
+      -d "{
+        \"message\": \"Suggest improvements for this piece: $NEW_CONTENT\"
+      }")
+    
+    echo "Suggestions Response:"
+    echo "$SUGGEST_RESPONSE" | jq '.'
+    
+    # Test 5: Chat with music assistant - modify the piece
+    echo -e "\n5. Testing music assistant chat - modification..."
+    MODIFY_RESPONSE=$(curl -s -X POST "$BASE_URL/api/music-assistant/chat" \
+      -H "Content-Type: application/json" \
+      -d "{
+        \"message\": \"Modify this piece to add dynamics and articulation: $NEW_CONTENT\",
+        \"context\": {
+          \"style\": \"romantic\"
+        }
+      }")
+    
+    echo "Modify Response:"
+    echo "$MODIFY_RESPONSE" | jq '.'
+    
+    # Test 6: Validate and compile
+    echo -e "\n6. Testing validation and compilation..."
+    VALIDATE_RESPONSE=$(curl -s -X POST "$BASE_URL/api/music-assistant/validate-compile" \
+      -H "Content-Type: application/json" \
+      -d "{
+        \"content\": $(echo "$NEW_CONTENT" | jq -R -s .)
+      }")
+    
+    echo "Validate Response:"
+    echo "$VALIDATE_RESPONSE" | jq '.'
+else
+    echo -e "\nComposition failed, skipping subsequent tests"
+fi
 
-# Test LilyPond document creation with valid LilyPond
-echo -e "\n4. Testing LilyPond document creation..."
-LILYPOND_RESPONSE=$(curl -s -X POST "$BASE_URL/api/lilypond" \
+# Test 7: Stream setup
+echo -e "\n7. Testing stream setup..."
+STREAM_SETUP_RESPONSE=$(curl -s -X POST "$BASE_URL/api/music-assistant/stream" \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "Test LilyPond Music Score",
-    "content": "\\version \"2.24.0\"\\score {\\new Staff {c d e f g a b c}\\layout {}}"
+    "message": "Create a simple melody in G major",
+    "context": {
+      "style": "folk",
+      "tempo": "fast"
+    }
   }')
 
-echo "$LILYPOND_RESPONSE" | jq '.'
-LILYPOND_ID=$(echo "$LILYPOND_RESPONSE" | jq -r '.data.id')
+echo "Stream Setup Response:"
+echo "$STREAM_SETUP_RESPONSE" | jq '.'
 
-# Test LilyPond source retrieval
-echo -e "\n5. Testing LilyPond source retrieval..."
-curl -s "$BASE_URL/api/lilypond/$LILYPOND_ID/source" | jq '.'
-
-# Test LilyPond file path retrieval
-echo -e "\n6. Testing LilyPond file path retrieval..."
-curl -s "$BASE_URL/api/lilypond/$LILYPOND_ID/file-path" | jq '.'
-
-# Test LilyPond temporary directory
-echo -e "\n7. Testing LilyPond temporary directory..."
-curl -s "$BASE_URL/api/lilypond/temp-dir" | jq '.'
-
-# Test LilyPond document update
-echo -e "\n8. Testing LilyPond document update..."
-curl -s -X PUT "$BASE_URL/api/lilypond/$LILYPOND_ID" \
+# Test 8: General chat with different request
+echo -e "\n8. Testing general chat with different request..."
+GENERAL_RESPONSE=$(curl -s -X POST "$BASE_URL/api/music-assistant/chat" \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "Updated LilyPond Music Score",
-    "content": "\\version \"2.24.0\"\\score {\\new Staff {c d e f g a b c d}\\layout {}}"
-  }' | jq '.'
+    "message": "Explain the difference between major and minor scales",
+    "context": {
+      "level": "beginner"
+    }
+  }')
 
-# Test LilyPond compilation
-echo -e "\n9. Testing LilyPond compilation..."
-COMPILE_RESPONSE=$(curl -s -X POST "$BASE_URL/api/lilypond/$LILYPOND_ID/compile")
-echo "$COMPILE_RESPONSE" | jq '.'
+echo "General Chat Response:"
+echo "$GENERAL_RESPONSE" | jq '.'
 
-# Test PDF path retrieval
-echo -e "\n10. Testing PDF path retrieval..."
-curl -s "$BASE_URL/api/lilypond/$LILYPOND_ID/pdf-path" | jq '.'
-
-# Test PDF file download
-echo -e "\n11. Testing PDF file download..."
-PDF_RESPONSE=$(curl -s -I "$BASE_URL/api/lilypond/$LILYPOND_ID/pdf")
-echo "$PDF_RESPONSE" | head -5
-
-# Test chat with music composition assistant
-echo -e "\n12. Testing chat with music composition assistant..."
-curl -s -X POST "$BASE_URL/api/chat" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "Create a simple C major scale in LilyPond notation"
-  }' | jq '.'
-
-# Test document listing
-echo -e "\n13. Testing document listing..."
-curl -s "$BASE_URL/api/documents" | jq '.'
-
-# Test LilyPond document listing
-echo -e "\n14. Testing LilyPond document listing..."
-curl -s "$BASE_URL/api/lilypond" | jq '.'
-
-# Test LilyPond document deletion
-echo -e "\n15. Testing LilyPond document deletion..."
-curl -s -X DELETE "$BASE_URL/api/lilypond/$LILYPOND_ID" | jq '.'
-
-# Test endpoints documentation
-echo -e "\n16. Testing endpoints documentation..."
-curl -s "$BASE_URL/endpoints" | jq '.data.endpoints | length'
-
-echo -e "\n✅ Music Composition Assistant API tests completed!"
-echo -e "\n📁 LilyPond files are stored in the temporary directory shown above."
-echo -e "\n📄 PDF files are generated in the same directory when compilation succeeds." 
+echo -e "\n=================================="
+echo "Music Assistant Integration Test Complete" 

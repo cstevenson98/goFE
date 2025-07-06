@@ -21,6 +21,7 @@ type LilyPondProcessor struct {
 	maxCompileTime time.Duration
 	maxRetries     int
 	outputManager  *OutputManager
+	version        string
 }
 
 // CompileOptions represents compilation options
@@ -117,7 +118,7 @@ func NewLilyPondProcessor() *LilyPondProcessor {
 		outputDir = "."
 	}
 
-	return &LilyPondProcessor{
+	processor := &LilyPondProcessor{
 		outputDir:      outputDir,
 		lilypond:       "lilypond",
 		maxCompileTime: 30 * time.Second,
@@ -128,6 +129,11 @@ func NewLilyPondProcessor() *LilyPondProcessor {
 			fileCache: make(map[string]*CachedFile),
 		},
 	}
+
+	// Get LilyPond version
+	processor.version = processor.getLilyPondVersion()
+
+	return processor
 }
 
 // CompileToPDF compiles LilyPond content to PDF
@@ -494,7 +500,7 @@ func (lp *LilyPondProcessor) checkScoreStructure(lilypond string, result *Valida
 	if !strings.Contains(lilypond, "\\version") {
 		result.Warnings = append(result.Warnings, ValidationWarning{
 			Message: "No version declaration",
-			Context: "Consider adding \\version \"2.24.0\"",
+			Context: fmt.Sprintf("Consider adding \\version \"%s\"", lp.version),
 		})
 	}
 }
@@ -584,7 +590,7 @@ func (lp *LilyPondProcessor) SaveLilyPondSource(documentID, content string) erro
 
 // WrapLilyPondContent wraps LilyPond content with basic structure
 func (lp *LilyPondProcessor) WrapLilyPondContent(content string) string {
-	return fmt.Sprintf(`\version "2.24.0"
+	return fmt.Sprintf(`\version "%s"
 
 \paper {
     indent = 0\mm
@@ -595,22 +601,54 @@ func (lp *LilyPondProcessor) WrapLilyPondContent(content string) string {
     evenFooterMarkup = ##f
 }
 
-%s`, content)
+%s`, lp.version, content)
 }
 
 // CreateBasicScore creates a basic score structure
 func (lp *LilyPondProcessor) CreateBasicScore(notes string) string {
-	return fmt.Sprintf(`\version "2.24.0"
+	return fmt.Sprintf(`\version "%s"
 
 \score {
     \new Staff {
         %s
     }
     \layout {}
-}`, notes)
+}`, lp.version, notes)
 }
 
 // GetOutputDir returns the output directory path
 func (lp *LilyPondProcessor) GetOutputDir() string {
 	return lp.outputDir
+}
+
+// GetVersion returns the detected LilyPond version
+func (lp *LilyPondProcessor) GetVersion() string {
+	return lp.version
+}
+
+// getLilyPondVersion gets the LilyPond version by running lilypond --version
+func (lp *LilyPondProcessor) getLilyPondVersion() string {
+	cmd := exec.Command(lp.lilypond, "--version")
+	output, err := cmd.Output()
+	if err != nil {
+		log.Printf("Warning: Failed to get LilyPond version: %v", err)
+		return "2.22.1" // fallback version
+	}
+
+	// Parse the version from output like "GNU LilyPond 2.22.1"
+	outputStr := string(output)
+	lines := strings.Split(outputStr, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "GNU LilyPond") {
+			parts := strings.Fields(line)
+			for i, part := range parts {
+				if part == "LilyPond" && i+1 < len(parts) {
+					return parts[i+1]
+				}
+			}
+		}
+	}
+
+	log.Printf("Warning: Could not parse LilyPond version from output: %s", outputStr)
+	return "2.22.1" // fallback version
 }

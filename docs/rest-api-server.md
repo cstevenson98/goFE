@@ -122,7 +122,6 @@ type GetDiffResponse struct {
 }
 
 func (dh *DiffHandler) GetDiff(w http.ResponseWriter, r *http.Request) {
-    // Get diff from system state (e.g., from context manager)
     diffID := r.URL.Query().Get("id")
     if diffID == "" {
         dh.respondWithError(w, http.StatusBadRequest, "Missing diff ID")
@@ -241,89 +240,6 @@ func (lph *LilyPondHandler) GetPDF(w http.ResponseWriter, r *http.Request) {
     w.Header().Set("Content-Type", "application/pdf")
     w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%s.pdf", id))
     w.Write(pdfData)
-}
-```
-
-### 4. Context Handler
-```go
-type ContextHandler struct {
-    BaseHandler
-    contextManager *ContextManager
-}
-
-func NewContextHandler(contextManager *ContextManager) *ContextHandler {
-    return &ContextHandler{
-        BaseHandler: BaseHandler{
-            name:    "context",
-            version: "1.0.0",
-            logger:  log.New(os.Stdout, "[CONTEXT] ", log.LstdFlags),
-        },
-        contextManager: contextManager,
-    }
-}
-
-func (ch *ContextHandler) RegisterRoutes(router *mux.Router) {
-    contextRouter := router.PathPrefix("/api/context").Subrouter()
-    
-    contextRouter.HandleFunc("/document", ch.GetDocument).Methods("GET")
-    contextRouter.HandleFunc("/save", ch.SaveCurrent).Methods("POST")
-}
-
-// GET /api/context/document
-type GetDocumentResponse struct {
-    Success bool        `json:"success"`
-    Data    *Document   `json:"data,omitempty"`
-    Error   string      `json:"error,omitempty"`
-}
-
-func (ch *ContextHandler) GetDocument(w http.ResponseWriter, r *http.Request) {
-    // Get the current document from the context manager
-    document, err := ch.contextManager.GetCurrentDocument()
-    if err != nil {
-        ch.respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get document: %v", err))
-        return
-    }
-    
-    ch.respondWithJSON(w, http.StatusOK, GetDocumentResponse{
-        Success: true,
-        Data:    document,
-    })
-}
-
-// POST /api/context/save
-type SaveCurrentRequest struct {
-    Document *Document `json:"document"`
-}
-
-type SaveCurrentResponse struct {
-    Success bool   `json:"success"`
-    Message string `json:"message,omitempty"`
-    Error   string `json:"error,omitempty"`
-}
-
-func (ch *ContextHandler) SaveCurrent(w http.ResponseWriter, r *http.Request) {
-    var req SaveCurrentRequest
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        ch.respondWithError(w, http.StatusBadRequest, "Invalid request body")
-        return
-    }
-    
-    if req.Document == nil {
-        ch.respondWithError(w, http.StatusBadRequest, "Document is required")
-        return
-    }
-    
-    // Save the document to the context manager
-    err := ch.contextManager.SaveCurrentDocument(req.Document)
-    if err != nil {
-        ch.respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to save document: %v", err))
-        return
-    }
-    
-    ch.respondWithJSON(w, http.StatusOK, SaveCurrentResponse{
-        Success: true,
-        Message: "Document saved successfully",
-    })
 }
 ```
 
@@ -492,21 +408,6 @@ func (cm *CORSMiddleware) Handle(next http.Handler) http.Handler {
         next.ServeHTTP(w, r)
     })
 }
-
-// Rate limiting middleware
-type RateLimitMiddleware struct {
-    limiter *rate.Limiter
-}
-
-func (rlm *RateLimitMiddleware) Handle(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        if !rlm.limiter.Allow() {
-            http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
-            return
-        }
-        next.ServeHTTP(w, r)
-    })
-}
 ```
 
 ## Error Handling
@@ -560,18 +461,15 @@ func main() {
     promptEngine := NewPromptEngine(4000, 8000)
     diffGenerator := NewDiffGenerator(3, 1000, "/tmp")
     lilypondProcessor := NewLilyPondProcessor("/tmp", "lilypond", 30*time.Second, 3)
-    contextManager := NewContextManager()
     
     // Register handlers
     server.RegisterHandler(NewPromptHandler(promptEngine))
     server.RegisterHandler(NewDiffHandler(diffGenerator))
     server.RegisterHandler(NewLilyPondHandler(lilypondProcessor))
-    server.RegisterHandler(NewContextHandler(contextManager))
     
     // Add middleware
     server.AddMiddleware(&LoggingMiddleware{logger: log.New(os.Stdout, "[ACCESS] ", log.LstdFlags)})
     server.AddMiddleware(&CORSMiddleware{allowedOrigins: []string{"*"}})
-    server.AddMiddleware(&RateLimitMiddleware{limiter: rate.NewLimiter(rate.Every(time.Second), 100)})
     
     // Start server
     if err := server.Start(); err != nil {
@@ -622,7 +520,4 @@ POST   /api/lilypond/compile      - Compile LilyPond
 POST   /api/lilypond/validate     - Validate syntax
 GET    /api/lilypond/pdf/{id}     - Get PDF
 GET    /api/lilypond/health       - LilyPond health check
-
-GET    /api/context/document      - Get current document
-POST   /api/context/save          - Save current document
 ``` 

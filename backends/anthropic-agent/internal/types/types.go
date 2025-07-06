@@ -5,6 +5,7 @@ import "time"
 // AnthropicRequest represents a request to the Anthropic agent
 type AnthropicRequest struct {
 	Message string `json:"message" validate:"required,min=1,max=10000"`
+	Content string `json:"content,omitempty"` // Current LilyPond content to analyze/modify
 }
 
 // AnthropicResponse represents a response from the Anthropic agent

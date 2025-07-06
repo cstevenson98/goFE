@@ -1,7 +1,23 @@
-{% func AnthropicAgentExampleTemplate(id, promptInputID, sendButtonID, streamButtonID, formID, editAreaID, pdfViewerID, documentSelectID, createDocumentButtonID, saveDocumentButtonID, compileButtonID, deleteButtonID, sourceButtonID, filePathButtonID, promptInput, assistantResponse, editContent, currentDocumentID string, lilypondDocuments []LilyPondDocument, loading, streaming, compiling bool, error string, tokenCount int, documentInfo, pdfUrl string) %}
+{% func AnthropicAgentExampleTemplate(id, promptInputID, sendButtonID, streamButtonID, musicAssistantButtonID, extractContentButtonID, formID, editAreaID, pdfViewerID, documentSelectID, createDocumentButtonID, saveDocumentButtonID, compileButtonID, deleteButtonID, sourceButtonID, filePathButtonID, promptInput, assistantResponse, editContent, currentDocumentID string, lilypondDocuments []LilyPondDocument, loading, streaming, compiling bool, error string, tokenCount int, documentInfo, pdfUrl, apiMode string) %}
 <div id="{%s id %}" class="min-h-screen bg-gray-50 p-4">
   <div class="w-full">
     <h1 class="text-3xl font-bold text-gray-900 mb-6 text-center">Music Composition Assistant</h1>
+    
+    <!-- API Mode Display -->
+    <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <strong class="font-bold">API Mode:</strong>
+          <span class="ml-2">{%s apiMode %}</span>
+        </div>
+        <button 
+          id="{%s musicAssistantButtonID %}" 
+          class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm"
+        >
+          Switch to {% if apiMode == "music-assistant" %}Chat{% else %}Music Assistant{% endif %}
+        </button>
+      </div>
+    </div>
     
     <!-- Document Management Bar -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
@@ -150,11 +166,20 @@
                     Assistant Response:
                   {% endif %}
                 </h3>
-                {% if streaming || tokenCount > 0 %}
-                  <div class="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                    Tokens: {%d tokenCount %}
-                  </div>
-                {% endif %}
+                <div class="flex items-center space-x-2">
+                  {% if streaming || tokenCount > 0 %}
+                    <div class="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                      Tokens: {%d tokenCount %}
+                    </div>
+                  {% endif %}
+                  <button 
+                    id="{%s extractContentButtonID %}" 
+                    class="bg-orange-500 hover:bg-orange-700 text-white font-bold py-1 px-2 rounded text-xs"
+                    title="Extract LilyPond content from response"
+                  >
+                    Extract
+                  </button>
+                </div>
               </div>
               <div class="flex-1 bg-gray-50 border border-gray-200 rounded p-3 text-sm text-gray-800 whitespace-pre-wrap overflow-y-auto min-h-0">{%s assistantResponse %}</div>
             {% else %}
