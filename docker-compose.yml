@@ -7,36 +7,36 @@ services:
     volumes:
       - ./index:/usr/share/nginx/html
       - ./index/nginx.conf:/etc/nginx/conf.d/default.conf
-    depends_on:
-      - api-example
+    # depends_on:
+    #   - api-example
     restart: unless-stopped
     networks:
       - gofe-network
 
-  # Generic API backend for fetch example and other API needs
-  api-example:
-    build:
-      context: ./
-      dockerfile: ./backends/api-example/Dockerfile
-    ports:
-      - "8080:8080"
-    environment:
-      - GIN_MODE=release
-    volumes:
-      - ./pkg:/app/pkg
-    networks:
-      - gofe-network
+  # # Generic API backend for fetch example and other API needs
+  # api-example:
+  #   build:
+  #     context: ./
+  #     dockerfile: ./backends/api-example/Dockerfile
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - GIN_MODE=release
+  #   volumes:
+  #     - ./pkg:/app/pkg
+  #   networks:
+  #     - gofe-network
 
-  anthropic-agent:
-    build:
-      context: ./
-      dockerfile: ./backends/anthropic-agent/Dockerfile
-    ports:
-      - "8081:8081"
-    networks:
-      - gofe-network
-    environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+  # anthropic-agent:
+  #   build:
+  #     context: ./
+  #     dockerfile: ./backends/anthropic-agent/Dockerfile
+  #   ports:
+  #     - "8081:8081"
+  #   networks:
+  #     - gofe-network
+  #   environment:
+  #     - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 
 networks:
   gofe-network:

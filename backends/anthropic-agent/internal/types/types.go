@@ -39,3 +39,8 @@ type EndpointsResponse struct {
 	Endpoints []EndpointInfo `json:"endpoints"`
 	Total     int            `json:"total"`
 }
+
+// StreamSetupResponse represents the response when setting up a streaming session
+type StreamSetupResponse struct {
+	SessionId string `json:"sessionId"`
+}

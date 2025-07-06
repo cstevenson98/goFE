@@ -1,0 +1,239 @@
+{% func AnthropicAgentExampleTemplate(id, promptInputID, sendButtonID, streamButtonID, formID, editAreaID, pdfViewerID, documentSelectID, createDocumentButtonID, saveDocumentButtonID, compileButtonID, deleteButtonID, sourceButtonID, filePathButtonID, promptInput, assistantResponse, editContent, currentDocumentID string, lilypondDocuments []LilyPondDocument, loading, streaming, compiling bool, error string, tokenCount int, documentInfo, pdfUrl string) %}
+<div id="{%s id %}" class="min-h-screen bg-gray-50 p-4">
+  <div class="w-full">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6 text-center">Music Composition Assistant</h1>
+    
+    <!-- Document Management Bar -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+      <div class="flex items-center space-x-4">
+        <div class="flex-1">
+          <label for="{%s documentSelectID %}" class="block text-sm font-medium text-gray-700 mb-1">
+            Select Document
+          </label>
+          <select 
+            id="{%s documentSelectID %}"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            <option value="">-- Select a document --</option>
+            {% for _, doc := range lilypondDocuments %}
+              <option value="{%s doc.ID %}" {% if doc.ID == currentDocumentID %}selected{% endif %}>
+                {%s doc.Title %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <button 
+          id="{%s createDocumentButtonID %}" 
+          class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+        >
+          Create New
+        </button>
+        <button 
+          id="{%s saveDocumentButtonID %}" 
+          class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          {% if currentDocumentID == "" %}disabled{% endif %}
+        >
+          Save
+        </button>
+        <button 
+          id="{%s compileButtonID %}" 
+          class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+          {% if currentDocumentID == "" || compiling %}disabled{% endif %}
+        >
+          {% if compiling %}
+            Compiling...
+          {% else %}
+            Compile
+          {% endif %}
+        </button>
+        <button 
+          id="{%s deleteButtonID %}" 
+          class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+          {% if currentDocumentID == "" %}disabled{% endif %}
+        >
+          Delete
+        </button>
+        <button 
+          id="{%s sourceButtonID %}" 
+          class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
+          {% if currentDocumentID == "" %}disabled{% endif %}
+        >
+          Source
+        </button>
+        <button 
+          id="{%s filePathButtonID %}" 
+          class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+          {% if currentDocumentID == "" %}disabled{% endif %}
+        >
+          File Path
+        </button>
+      </div>
+    </div>
+
+    <!-- Error Display -->
+    {% if error != "" %}
+      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <strong class="font-bold">Error:</strong>
+        <span class="block sm:inline">{%s error %}</span>
+      </div>
+    {% endif %}
+
+    <!-- Document Info Display -->
+    {% if documentInfo != "" %}
+      <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+        <strong class="font-bold">Document Info:</strong>
+        <div class="mt-2 whitespace-pre-wrap text-sm">{%s documentInfo %}</div>
+      </div>
+    {% endif %}
+
+    <!-- Three Column Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-200px)]">
+      
+      <!-- Prompt Window -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
+        <div class="p-4 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-800">Prompt</h2>
+          <p class="text-sm text-gray-600">Ask the AI assistant for help with music composition</p>
+        </div>
+        
+        <div class="flex-1 p-4 flex flex-col">
+          <!-- Chat Input at Top -->
+          <form id="{%s formID %}" class="mb-4">
+            <div class="mb-3">
+              <textarea 
+                id="{%s promptInputID %}"
+                name="prompt"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+                placeholder="Enter your prompt here... (e.g., 'Create a C major scale', 'Add a bass line', 'Change the time signature to 3/4')"
+                rows="3"
+                required
+              >{%s promptInput %}</textarea>
+            </div>
+            
+            <div class="flex space-x-2">
+              <button 
+                id="{%s sendButtonID %}" 
+                type="submit"
+                class="flex-1 bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                {% if loading %}disabled{% endif %}
+              >
+                {% if loading %}
+                  Sending...
+                {% else %}
+                  Send
+                {% endif %}
+              </button>
+              
+              <button 
+                id="{%s streamButtonID %}" 
+                type="button"
+                class="flex-1 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                {% if streaming %}disabled{% endif %}
+              >
+                {% if streaming %}
+                  Streaming...
+                {% else %}
+                  Stream
+                {% endif %}
+              </button>
+            </div>
+          </form>
+          
+          <!-- Assistant Response - Scrollable Area -->
+          <div class="flex-1 flex flex-col min-h-0">
+            {% if assistantResponse != "" %}
+              <div class="flex justify-between items-center mb-2">
+                <h3 class="text-sm font-medium text-gray-700">
+                  {% if streaming %}
+                    Assistant Response (Streaming):
+                  {% else %}
+                    Assistant Response:
+                  {% endif %}
+                </h3>
+                {% if streaming || tokenCount > 0 %}
+                  <div class="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                    Tokens: {%d tokenCount %}
+                  </div>
+                {% endif %}
+              </div>
+              <div class="flex-1 bg-gray-50 border border-gray-200 rounded p-3 text-sm text-gray-800 whitespace-pre-wrap overflow-y-auto min-h-0">{%s assistantResponse %}</div>
+            {% else %}
+              <div class="flex-1 bg-gray-50 border border-gray-200 rounded p-3 text-sm text-gray-400 flex items-center justify-center">
+                <div class="text-center">
+                  <svg class="mx-auto h-8 w-8 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <p class="text-sm">Send a message to start chatting</p>
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Edit Window -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
+        <div class="p-4 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-800">LilyPond Editor</h2>
+          <p class="text-sm text-gray-600">Edit the LilyPond music notation</p>
+        </div>
+        
+        <div class="flex-1 p-4">
+          <textarea 
+            id="{%s editAreaID %}"
+            class="w-full h-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
+            style="font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;"
+            placeholder="Enter LilyPond music notation here..."
+          >{%s editContent %}</textarea>
+        </div>
+      </div>
+      
+      <!-- PDF Window -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
+        <div class="p-4 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-800">PDF Preview</h2>
+          <p class="text-sm text-gray-600">Preview the rendered music score</p>
+        </div>
+        
+        <div class="flex-1 p-4">
+          <div 
+            id="{%s pdfViewerID %}"
+            class="w-full h-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50"
+          >
+            {% if error != "" && currentDocumentID != "" %}
+              <div class="w-full h-full p-4 overflow-auto">
+                <div class="text-center mb-4">
+                  <svg class="mx-auto h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  <p class="text-sm font-medium text-red-600 mb-2">Compilation Error</p>
+                </div>
+                <pre class="text-xs text-red-700 bg-red-50 border border-red-200 rounded p-3 font-mono whitespace-pre-wrap overflow-auto max-h-full">{%s error %}</pre>
+              </div>
+            {% else %}
+              {% if pdfUrl != "" %}
+                <iframe 
+                  src="{%s pdfUrl %}" 
+                  class="w-full h-full border-0 rounded-lg"
+                  title="PDF Preview"
+                >
+                  <p>Your browser does not support PDF preview. <a href="{%s pdfUrl %}" target="_blank">Click here to download the PDF</a>.</p>
+                </iframe>
+              {% else %}
+                <div class="text-center text-gray-500">
+                  <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p class="mt-2 text-sm">PDF preview will appear here</p>
+                  <p class="text-xs">Compile a document to see the PDF preview</p>
+                </div>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+{% endfunc %} 

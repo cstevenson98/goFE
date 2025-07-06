@@ -167,6 +167,124 @@ func FetchJSONWithResponse[T any](url string, options *FetchOptions) (*FetchResp
 	return FetchJSON[T](url, options)
 }
 
+// FetchJSONWithErrorBody performs a type-safe JSON fetch and returns both response and error body
+func FetchJSONWithErrorBody[T any](url string, options *FetchOptions) (*FetchResponse[T], *FetchResponse[T], error) {
+	// Default options
+	if options == nil {
+		options = &FetchOptions{
+			Method:  GET,
+			Headers: make(map[string]string),
+		}
+	}
+
+	// Set default headers if not provided
+	if options.Headers == nil {
+		options.Headers = make(map[string]string)
+	}
+	if _, exists := options.Headers["Content-Type"]; !exists && options.Body != nil {
+		options.Headers["Content-Type"] = "application/json"
+	}
+
+	// Prepare fetch options for JavaScript
+	jsOptions := js.Global().Get("Object").New()
+	jsOptions.Set("method", string(options.Method))
+
+	// Set headers
+	if len(options.Headers) > 0 {
+		jsHeaders := js.Global().Get("Object").New()
+		for key, value := range options.Headers {
+			jsHeaders.Set(key, value)
+		}
+		jsOptions.Set("headers", jsHeaders)
+	}
+
+	// Set body if provided
+	if options.Body != nil {
+		bodyJSON, err := json.Marshal(options.Body)
+		if err != nil {
+			return nil, nil, &FetchError{Message: fmt.Sprintf("Failed to marshal body: %v", err)}
+		}
+		jsOptions.Set("body", string(bodyJSON))
+	}
+
+	// Set additional options
+	if options.Timeout > 0 {
+		jsOptions.Set("timeout", options.Timeout)
+	}
+	if options.Mode != "" {
+		jsOptions.Set("mode", options.Mode)
+	}
+	if options.Cache != "" {
+		jsOptions.Set("cache", options.Cache)
+	}
+
+	// Perform the fetch
+	fetchPromise := js.Global().Call("fetch", url, jsOptions)
+
+	// Wait for the promise to resolve
+	done := make(chan js.Value, 1)
+	errorChan := make(chan error, 1)
+
+	fetchPromise.Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		response := args[0]
+		done <- response
+		return nil
+	})).Call("catch", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		errorChan <- &FetchError{Message: args[0].Get("message").String()}
+		return nil
+	}))
+
+	// Wait for response or error
+	select {
+	case response := <-done:
+		// Parse JSON response regardless of status code
+		jsonPromise := response.Call("json")
+		jsonDone := make(chan js.Value, 1)
+		jsonErrorChan := make(chan error, 1)
+
+		jsonPromise.Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			jsonData := args[0]
+			jsonDone <- jsonData
+			return nil
+		})).Call("catch", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			jsonErrorChan <- &FetchError{Message: "Failed to parse JSON response"}
+			return nil
+		}))
+
+		select {
+		case jsonData := <-jsonDone:
+			// Convert JavaScript object to Go struct
+			var result T
+			jsonStr := js.Global().Get("JSON").Call("stringify", jsonData).String()
+			if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
+				return nil, nil, &FetchError{Message: fmt.Sprintf("Failed to unmarshal response: %v", err)}
+			}
+
+			fetchResponse := &FetchResponse[T]{
+				Data:   result,
+				Status: response.Get("status").Int(),
+				OK:     response.Get("ok").Bool(),
+			}
+
+			// If response is not OK, return both the parsed response and an error
+			if !fetchResponse.OK {
+				return fetchResponse, fetchResponse, &FetchError{
+					Message: fmt.Sprintf("HTTP %d: %s", fetchResponse.Status, response.Get("statusText").String()),
+					Status:  fetchResponse.Status,
+				}
+			}
+
+			return fetchResponse, nil, nil
+
+		case err := <-jsonErrorChan:
+			return nil, nil, err
+		}
+
+	case err := <-errorChan:
+		return nil, nil, err
+	}
+}
+
 // FetchText performs a text fetch request
 func FetchText(url string, options *FetchOptions) (string, error) {
 	if options == nil {
@@ -324,6 +442,17 @@ func PostJSON[T any, U any](url string, data U) (*FetchResponse[T], error) {
 	})
 }
 
+// PostJSONWithErrorBody performs a POST request with JSON data and returns both response and error body
+func PostJSONWithErrorBody[T any, U any](url string, data U) (*FetchResponse[T], *FetchResponse[T], error) {
+	return FetchJSONWithErrorBody[T](url, &FetchOptions{
+		Method: POST,
+		Body:   data,
+		Headers: map[string]string{
+			"Content-Type": "application/json",
+		},
+	})
+}
+
 // PutJSON performs a PUT request with JSON data
 func PutJSON[T any, U any](url string, data U) (*FetchResponse[T], error) {
 	return FetchJSON[T](url, &FetchOptions{
@@ -338,4 +467,57 @@ func PutJSON[T any, U any](url string, data U) (*FetchResponse[T], error) {
 // DeleteJSON performs a DELETE request
 func DeleteJSON[T any](url string) (*FetchResponse[T], error) {
 	return FetchJSON[T](url, &FetchOptions{Method: DELETE})
+}
+
+// EventSource represents a Server-Sent Events connection
+type EventSource struct {
+	jsValue js.Value
+	closed  bool
+}
+
+// EventSourceEvent represents an SSE event
+type EventSourceEvent struct {
+	Type string `json:"type"`
+	Data string `json:"data"`
+}
+
+// EventSourceHandler is a function that handles SSE events
+type EventSourceHandler func(event EventSourceEvent)
+
+// CreateEventSource creates a new EventSource connection
+func CreateEventSource(url string) *EventSource {
+	eventSource := js.Global().Get("EventSource").New(url)
+	return &EventSource{
+		jsValue: eventSource,
+		closed:  false,
+	}
+}
+
+// AddEventListener adds an event listener to the EventSource
+func (es *EventSource) AddEventListener(eventType string, handler EventSourceHandler) {
+	if es.closed {
+		return
+	}
+
+	es.jsValue.Call("addEventListener", eventType, js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		event := args[0]
+		handler(EventSourceEvent{
+			Type: event.Get("type").String(),
+			Data: event.Get("data").String(),
+		})
+		return nil
+	}))
+}
+
+// Close closes the EventSource connection
+func (es *EventSource) Close() {
+	if !es.closed {
+		es.jsValue.Call("close")
+		es.closed = true
+	}
+}
+
+// IsClosed returns whether the EventSource is closed
+func (es *EventSource) IsClosed() bool {
+	return es.closed
 }

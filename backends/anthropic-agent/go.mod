@@ -3,8 +3,8 @@ module github.com/cstevenson98/goFE/backends/anthropic-agent
 go 1.21.3
 
 require (
-	github.com/anthropics/anthropic-sdk-go latest
-	github.com/gorilla/mux latest
+	github.com/anthropics/anthropic-sdk-go v1.5.0
+	github.com/gorilla/mux v1.8.1
 )
 
 require (

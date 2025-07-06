@@ -18,5 +18,9 @@ api:
 	go generate ./...
 	tinygo build --no-debug -o index/main.wasm -target wasm examples/apiExample/main.go
 
+anthropic-agent:
+	go generate ./...
+	tinygo build --no-debug -o index/main.wasm -target wasm examples/anthropicAgentExample/main.go
+
 clean:
 	rm -rf index/main.wasm
