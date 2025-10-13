@@ -22,5 +22,9 @@ anthropic-agent:
 	go generate ./...
 	tinygo build --no-debug -o index/main.wasm -target wasm examples/anthropicAgentExample/main.go
 
+webgpu:
+	go generate ./...
+	tinygo build --no-debug -o index/main.wasm -target wasm examples/webgpuExample/main.go
+
 clean:
 	rm -rf index/main.wasm

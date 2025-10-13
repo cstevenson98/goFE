@@ -1,0 +1,95 @@
+@startuml database-schema
+!theme plain
+skinparam linetype ortho
+
+entity "users" as users {
+  * id : UUID <<PK>>
+  --
+  username : VARCHAR(50)
+  email : VARCHAR(255)
+  created_at : TIMESTAMP
+}
+
+entity "projects" as projects {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  name : VARCHAR(255)
+  description : TEXT
+  created_at : TIMESTAMP
+}
+
+entity "documents" as documents {
+  * id : UUID <<PK>>
+  --
+  * project_id : UUID <<FK>>
+  * user_id : UUID <<FK>>
+  title : VARCHAR(255)
+  content : TEXT
+  status : VARCHAR(20)
+  version : INTEGER
+  created_at : TIMESTAMP
+}
+
+entity "files" as files {
+  * id : UUID <<PK>>
+  --
+  * document_id : UUID <<FK>>
+  document_version : INTEGER
+  file_type : VARCHAR(10)
+  file_name : VARCHAR(255)
+  file_path : VARCHAR(500)
+  created_at : TIMESTAMP
+}
+
+entity "compilation_results" as compilation_results {
+  * id : UUID <<PK>>
+  --
+  * document_id : UUID <<FK>>
+  document_version : INTEGER
+  success : BOOLEAN
+  compilation_time : INTEGER
+  created_at : TIMESTAMP
+}
+
+entity "document_versions" as document_versions {
+  * id : UUID <<PK>>
+  --
+  * document_id : UUID <<FK>>
+  version : INTEGER
+  title : VARCHAR(255)
+  content : TEXT
+  created_at : TIMESTAMP
+}
+
+entity "shared_documents" as shared_documents {
+  * id : UUID <<PK>>
+  --
+  * document_id : UUID <<FK>>
+  * shared_with_user_id : UUID <<FK>>
+  permission_level : VARCHAR(10)
+  shared_at : TIMESTAMP
+}
+
+entity "activity_log" as activity_log {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  * document_id : UUID <<FK>>
+  action : VARCHAR(50)
+  created_at : TIMESTAMP
+}
+
+' Relationships
+users ||--o{ projects : "owns"
+users ||--o{ documents : "creates"
+projects ||--o{ documents : "contains"
+documents ||--o{ files : "generates"
+documents ||--o{ compilation_results : "produces"
+documents ||--o{ document_versions : "has versions"
+documents ||--o{ shared_documents : "shared as"
+users ||--o{ shared_documents : "shared with"
+users ||--o{ activity_log : "performs"
+documents ||--o{ activity_log : "logged for"
+
+@enduml 
