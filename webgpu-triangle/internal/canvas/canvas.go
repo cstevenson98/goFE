@@ -675,8 +675,10 @@ func (w *WebGPUCanvasManager) canvasToNDC(x, y float64) (float32, float32) {
 	height := w.canvas.Get("height").Float()
 
 	// Convert to NDC (-1 to 1)
+	// X: left = -1, right = 1
+	// Y: top = 1, bottom = -1 (inverted from canvas where top = 0)
 	ndcX := float32((x/width)*2.0 - 1.0)
-	ndcY := float32((y/height)*2.0 - 1.0)
+	ndcY := float32(1.0 - (y/height)*2.0) // Flip Y axis
 
 	return ndcX, ndcY
 }
