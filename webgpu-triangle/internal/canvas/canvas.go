@@ -39,6 +39,9 @@ type CanvasManager interface {
 
 	// Canvas management
 	ClearCanvas() error
+
+	// Helper methods for testing/debugging
+	DrawColoredRect(position types.Vector2, size types.Vector2, color [4]float32) error
 }
 
 // WebGPUCanvasManager implements CanvasManager using WebGPU
@@ -459,32 +462,50 @@ func (w *WebGPUCanvasManager) DrawTexture(texture types.Texture, position types.
 		return &CanvasError{Message: "Canvas not initialized"}
 	}
 
-	println("DEBUG: DrawTexture - Position:", position.X, position.Y, "Size:", size.X, size.Y)
-
-	// For Phase 1, draw a blue colored rectangle (no textures yet)
+	// For Phase 2, support custom colors (later will support textures)
+	// For now, use blue as default
 	color := [4]float32{0.0, 0.5, 1.0, 1.0} // Blue color (RGBA)
 
+	return w.DrawColoredRect(position, size, color)
+}
+
+// DrawColoredRect draws a colored rectangle with the specified color
+func (w *WebGPUCanvasManager) DrawColoredRect(position types.Vector2, size types.Vector2, color [4]float32) error {
+	if !w.initialized {
+		return &CanvasError{Message: "Canvas not initialized"}
+	}
+	return w.drawColoredRect(position, size, color)
+}
+
+// drawColoredRect draws a colored rectangle (internal helper)
+func (w *WebGPUCanvasManager) drawColoredRect(position types.Vector2, size types.Vector2, color [4]float32) error {
 	// Generate vertices for the rectangle
 	vertices := w.generateQuadVertices(position, size, color)
 
-	// Upload vertices to GPU
-	verticesTypedArray := js.Global().Get("Float32Array").New(len(vertices))
-	for i, v := range vertices {
-		verticesTypedArray.SetIndex(i, v)
+	if w.batchMode {
+		// In batch mode, accumulate vertices
+		w.stagedVertices = append(w.stagedVertices, vertices...)
+		println("DEBUG: Batched rectangle at", position.X, position.Y, "- Total vertices:", len(w.stagedVertices))
+	} else {
+		// Immediate mode - upload and stage for rendering
+		verticesTypedArray := js.Global().Get("Float32Array").New(len(vertices))
+		for i, v := range vertices {
+			verticesTypedArray.SetIndex(i, v)
+		}
+
+		w.device.Get("queue").Call("writeBuffer",
+			w.vertexBuffer,
+			0, // offset
+			verticesTypedArray,
+			0,             // data offset
+			len(vertices), // size in floats
+		)
+
+		// Stage the vertex count for rendering (6 vertices = 1 quad)
+		w.stagedVertexCount = len(vertices) / 6 // 6 floats per vertex
+
+		println("DEBUG: Immediate mode - Staged", w.stagedVertexCount, "vertices")
 	}
-
-	w.device.Get("queue").Call("writeBuffer",
-		w.vertexBuffer,
-		0, // offset
-		verticesTypedArray,
-		0,             // data offset
-		len(vertices), // size in floats
-	)
-
-	// Stage the vertex count for rendering (6 vertices = 1 quad)
-	w.stagedVertexCount = len(vertices) / 6 // 6 floats per vertex
-
-	println("DEBUG: Staged", w.stagedVertexCount, "vertices for rendering")
 
 	return nil
 }
@@ -512,36 +533,74 @@ func (w *WebGPUCanvasManager) DrawTextureScaled(texture types.Texture, position 
 	return nil
 }
 
-// BeginBatch starts batch rendering mode (STUB)
+// BeginBatch starts batch rendering mode
 func (w *WebGPUCanvasManager) BeginBatch() error {
 	if !w.initialized {
 		return &CanvasError{Message: "Canvas not initialized"}
 	}
 
-	println("DEBUG: BeginBatch STUB")
-	// TODO: Implement batch rendering
+	w.batchMode = true
+	w.stagedVertices = make([]float32, 0) // Clear any previous staged vertices
+	w.stagedVertexCount = 0
+
+	println("DEBUG: BeginBatch - Batch mode enabled")
 	return nil
 }
 
-// EndBatch ends batch rendering mode (STUB)
+// EndBatch ends batch rendering mode and uploads all batched vertices
 func (w *WebGPUCanvasManager) EndBatch() error {
 	if !w.initialized {
 		return &CanvasError{Message: "Canvas not initialized"}
 	}
 
-	println("DEBUG: EndBatch STUB")
-	// TODO: Implement batch rendering
+	if !w.batchMode {
+		println("DEBUG: EndBatch called but not in batch mode")
+		return nil
+	}
+
+	// Upload all accumulated vertices to GPU
+	err := w.FlushBatch()
+	if err != nil {
+		return err
+	}
+
+	w.batchMode = false
+	println("DEBUG: EndBatch - Batch mode disabled,", w.stagedVertexCount, "vertices uploaded")
+
 	return nil
 }
 
-// FlushBatch forces rendering of batched vertices (STUB)
+// FlushBatch uploads accumulated vertices to GPU without leaving batch mode
 func (w *WebGPUCanvasManager) FlushBatch() error {
 	if !w.initialized {
 		return &CanvasError{Message: "Canvas not initialized"}
 	}
 
-	println("DEBUG: FlushBatch STUB")
-	// TODO: Implement batch rendering
+	if len(w.stagedVertices) == 0 {
+		println("DEBUG: FlushBatch - No vertices to flush")
+		w.stagedVertexCount = 0
+		return nil
+	}
+
+	// Upload all vertices to GPU
+	verticesTypedArray := js.Global().Get("Float32Array").New(len(w.stagedVertices))
+	for i, v := range w.stagedVertices {
+		verticesTypedArray.SetIndex(i, v)
+	}
+
+	w.device.Get("queue").Call("writeBuffer",
+		w.vertexBuffer,
+		0, // offset
+		verticesTypedArray,
+		0,                     // data offset
+		len(w.stagedVertices), // size in floats
+	)
+
+	// Calculate vertex count (6 floats per vertex)
+	w.stagedVertexCount = len(w.stagedVertices) / 6
+
+	println("DEBUG: FlushBatch - Uploaded", len(w.stagedVertices), "floats (", w.stagedVertexCount, "vertices )")
+
 	return nil
 }
 

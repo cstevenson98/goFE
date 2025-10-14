@@ -77,28 +77,45 @@ func startRenderLoop() {
 }
 
 func renderFrame(deltaTime float64) {
-	// Stage sprites for rendering
-	testBasicRectangle()
+	// Test multiple colored rectangles with batching
+	testMultipleRectangles()
 
 	// Render the frame (triangle + sprites)
 	canvasManager.Render()
 }
 
-func testBasicRectangle() {
-	// Create a simple texture stub (not actually used in Phase 1)
-	texture := &types.WebGPUTexture{
-		Width:  64,
-		Height: 64,
-		ID:     "test",
+func testMultipleRectangles() {
+	// Start batch mode
+	err := canvasManager.BeginBatch()
+	if err != nil {
+		println("DEBUG: Failed to begin batch:", err.Error())
+		return
 	}
 
-	// Draw a blue rectangle at position (100, 100) with size 64x64
-	position := types.Vector2{X: 100, Y: 100}
-	size := types.Vector2{X: 64, Y: 64}
-	uv := types.UVRect{U: 0, V: 0, W: 1, H: 1}
+	// Draw 5 rectangles with different colors and positions
+	rectangles := []struct {
+		pos   types.Vector2
+		size  types.Vector2
+		color [4]float32
+		name  string
+	}{
+		{types.Vector2{X: 100, Y: 100}, types.Vector2{X: 64, Y: 64}, [4]float32{1.0, 0.0, 0.0, 1.0}, "Red"},     // Red - top left
+		{types.Vector2{X: 200, Y: 100}, types.Vector2{X: 64, Y: 64}, [4]float32{0.0, 1.0, 0.0, 1.0}, "Green"},   // Green - top center-left
+		{types.Vector2{X: 300, Y: 100}, types.Vector2{X: 64, Y: 64}, [4]float32{0.0, 0.5, 1.0, 1.0}, "Blue"},    // Blue - top center
+		{types.Vector2{X: 400, Y: 100}, types.Vector2{X: 64, Y: 64}, [4]float32{1.0, 1.0, 0.0, 1.0}, "Yellow"},  // Yellow - top center-right
+		{types.Vector2{X: 500, Y: 100}, types.Vector2{X: 64, Y: 64}, [4]float32{1.0, 0.0, 1.0, 1.0}, "Magenta"}, // Magenta - top right
+	}
 
-	err := canvasManager.DrawTexture(texture, position, size, uv)
+	for _, rect := range rectangles {
+		err = canvasManager.DrawColoredRect(rect.pos, rect.size, rect.color)
+		if err != nil {
+			println("DEBUG: Failed to draw", rect.name, "rectangle:", err.Error())
+		}
+	}
+
+	// End batch mode (uploads all vertices at once)
+	err = canvasManager.EndBatch()
 	if err != nil {
-		println("DEBUG: Failed to draw texture:", err.Error())
+		println("DEBUG: Failed to end batch:", err.Error())
 	}
 }
