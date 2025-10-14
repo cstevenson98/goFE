@@ -11,6 +11,7 @@ import (
 var (
 	canvasManager canvas.CanvasManager
 	lastTime      float64
+	textureLoaded bool
 )
 
 func main() {
@@ -77,11 +78,38 @@ func startRenderLoop() {
 }
 
 func renderFrame(deltaTime float64) {
-	// Test multiple colored rectangles with batching
-	testMultipleRectangles()
+	// Test llama texture
+	testLlamaTexture()
 
 	// Render the frame (triangle + sprites)
 	canvasManager.Render()
+}
+
+func testLlamaTexture() {
+	// Try to load texture if not loaded yet
+	if !textureLoaded {
+		err := canvasManager.LoadTexture("llama.png")
+		if err != nil {
+			// Canvas not initialized yet, will retry next frame
+			return
+		}
+		textureLoaded = true
+		println("DEBUG: Texture loading initiated")
+		// Give it a moment to load asynchronously
+		return
+	}
+
+	// Draw llama.png texture at position (100, 100) with size 256x256
+	// Full texture UV coordinates
+	position := types.Vector2{X: 100, Y: 100}
+	size := types.Vector2{X: 256, Y: 256}
+	uv := types.UVRect{U: 0, V: 0, W: 1, H: 1}
+
+	err := canvasManager.DrawTexturedRect("llama.png", position, size, uv)
+	if err != nil {
+		// If texture not ready yet, just skip (it's loading asynchronously)
+		return
+	}
 }
 
 func testMultipleRectangles() {

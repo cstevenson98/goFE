@@ -42,6 +42,10 @@ type CanvasManager interface {
 
 	// Helper methods for testing/debugging
 	DrawColoredRect(position types.Vector2, size types.Vector2, color [4]float32) error
+
+	// Texture loading
+	LoadTexture(path string) error
+	DrawTexturedRect(texturePath string, position types.Vector2, size types.Vector2, uv types.UVRect) error
 }
 
 // WebGPUCanvasManager implements CanvasManager using WebGPU
@@ -55,7 +59,8 @@ type WebGPUCanvasManager struct {
 	error       string
 
 	// New fields for sprite rendering
-	spritePipeline     js.Value
+	spritePipeline     js.Value // Colored sprite pipeline
+	texturedPipeline   js.Value // Textured sprite pipeline
 	backgroundPipeline js.Value
 	vertexBuffer       js.Value
 	uniformBuffer      js.Value
@@ -67,13 +72,19 @@ type WebGPUCanvasManager struct {
 	// Staged sprite vertices for rendering
 	stagedVertices    []float32
 	stagedVertexCount int
+
+	// Texture management
+	loadedTextures   map[string]js.Value // path -> GPU texture
+	currentTexture   js.Value            // Currently bound texture
+	textureBindGroup js.Value            // Bind group for current texture
 }
 
 // NewWebGPUCanvasManager creates a new WebGPU canvas manager
 func NewWebGPUCanvasManager() *WebGPUCanvasManager {
 	return &WebGPUCanvasManager{
-		initialized: false,
-		error:       "",
+		initialized:    false,
+		error:          "",
+		loadedTextures: make(map[string]js.Value),
 	}
 }
 
@@ -217,10 +228,20 @@ func (w *WebGPUCanvasManager) renderFrame() {
 	renderPass.Call("draw", 3, 1, 0, 0)
 
 	// Draw sprites if we have any staged vertices
-	if w.stagedVertexCount > 0 && !w.spritePipeline.IsUndefined() {
-		renderPass.Call("setPipeline", w.spritePipeline)
-		renderPass.Call("setVertexBuffer", 0, w.vertexBuffer)
-		renderPass.Call("draw", w.stagedVertexCount, 1, 0, 0)
+	if w.stagedVertexCount > 0 {
+		// Check if we have a texture bound (textured rendering)
+		if !w.currentTexture.IsUndefined() && !w.textureBindGroup.IsUndefined() {
+			// Use textured pipeline
+			renderPass.Call("setPipeline", w.texturedPipeline)
+			renderPass.Call("setBindGroup", 0, w.textureBindGroup)
+			renderPass.Call("setVertexBuffer", 0, w.vertexBuffer)
+			renderPass.Call("draw", w.stagedVertexCount, 1, 0, 0)
+		} else if !w.spritePipeline.IsUndefined() {
+			// Use colored pipeline
+			renderPass.Call("setPipeline", w.spritePipeline)
+			renderPass.Call("setVertexBuffer", 0, w.vertexBuffer)
+			renderPass.Call("draw", w.stagedVertexCount, 1, 0, 0)
+		}
 	}
 
 	renderPass.Call("end")
@@ -339,6 +360,14 @@ func (w *WebGPUCanvasManager) setupWebGPUTriangle(device js.Value) {
 	println("DEBUG: Creating sprite pipeline")
 	w.createSpritePipeline(device, canvasFormat)
 
+	// Create textured sprite pipeline
+	println("DEBUG: Creating textured sprite pipeline")
+	w.createTexturedPipeline(device, canvasFormat)
+
+	// Create sampler for textures
+	println("DEBUG: Creating texture sampler")
+	w.createSampler(device)
+
 	// Create vertex buffer for sprites
 	println("DEBUG: Creating sprite vertex buffer")
 	w.createSpriteVertexBuffer(device)
@@ -354,6 +383,9 @@ func (w *WebGPUCanvasManager) setupWebGPUTriangle(device js.Value) {
 
 	println("DEBUG: WebGPU triangle setup complete")
 	w.SetStatus(true, "WebGPU triangle rendered successfully!")
+
+	// Trigger texture loading now that we're initialized
+	println("DEBUG: WebGPU fully initialized, ready for texture loading")
 }
 
 // initializeWebGL sets up WebGL fallback
@@ -708,6 +740,141 @@ func (w *WebGPUCanvasManager) createSpritePipeline(device js.Value, canvasFormat
 	return nil
 }
 
+// createTexturedPipeline creates the rendering pipeline for textured sprites
+func (w *WebGPUCanvasManager) createTexturedPipeline(device js.Value, canvasFormat js.Value) error {
+	println("DEBUG: Creating textured sprite shaders")
+
+	// Textured sprite shader code
+	texturedShaderCode := `
+		struct VertexOutput {
+			@builtin(position) position: vec4f,
+			@location(0) uv: vec2f,
+		}
+
+		@vertex
+		fn vs_main(
+			@location(0) position: vec2f,
+			@location(1) uv: vec2f
+		) -> VertexOutput {
+			var output: VertexOutput;
+			output.position = vec4f(position, 0.0, 1.0);
+			output.uv = uv;
+			return output;
+		}
+
+		@group(0) @binding(0) var textureSampler: sampler;
+		@group(0) @binding(1) var textureData: texture_2d<f32>;
+
+		@fragment
+		fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
+			return textureSample(textureData, textureSampler, uv);
+		}
+	`
+
+	texturedShaderModule := device.Call("createShaderModule", js.ValueOf(map[string]interface{}{
+		"code": texturedShaderCode,
+	}))
+
+	println("DEBUG: Creating textured pipeline")
+
+	// Create bind group layout for texture and sampler
+	bindGroupLayout := device.Call("createBindGroupLayout", js.ValueOf(map[string]interface{}{
+		"entries": []interface{}{
+			map[string]interface{}{
+				"binding":    0,
+				"visibility": 2, // Fragment shader (GPUShaderStage.FRAGMENT = 2)
+				"sampler":    map[string]interface{}{"type": "filtering"},
+			},
+			map[string]interface{}{
+				"binding":    1,
+				"visibility": 2, // Fragment shader (GPUShaderStage.FRAGMENT = 2)
+				"texture": map[string]interface{}{
+					"sampleType": "float",
+				},
+			},
+		},
+	}))
+
+	// Create pipeline layout
+	pipelineLayout := device.Call("createPipelineLayout", js.ValueOf(map[string]interface{}{
+		"bindGroupLayouts": []interface{}{bindGroupLayout},
+	}))
+
+	// Create textured render pipeline
+	texturedPipeline := device.Call("createRenderPipeline", js.ValueOf(map[string]interface{}{
+		"layout": pipelineLayout,
+		"vertex": map[string]interface{}{
+			"module":     texturedShaderModule,
+			"entryPoint": "vs_main",
+			"buffers": []interface{}{
+				map[string]interface{}{
+					"arrayStride": 16, // 4 floats * 4 bytes = 16 bytes (x, y, u, v)
+					"attributes": []interface{}{
+						map[string]interface{}{
+							"shaderLocation": 0,
+							"offset":         0,
+							"format":         "float32x2", // position (x, y)
+						},
+						map[string]interface{}{
+							"shaderLocation": 1,
+							"offset":         8,
+							"format":         "float32x2", // UV (u, v)
+						},
+					},
+				},
+			},
+		},
+		"fragment": map[string]interface{}{
+			"module":     texturedShaderModule,
+			"entryPoint": "fs_main",
+			"targets": []interface{}{
+				map[string]interface{}{
+					"format": canvasFormat,
+					"blend": map[string]interface{}{
+						"color": map[string]interface{}{
+							"srcFactor": "src-alpha",
+							"dstFactor": "one-minus-src-alpha",
+							"operation": "add",
+						},
+						"alpha": map[string]interface{}{
+							"srcFactor": "one",
+							"dstFactor": "one-minus-src-alpha",
+							"operation": "add",
+						},
+					},
+				},
+			},
+		},
+		"primitive": map[string]interface{}{
+			"topology": "triangle-list",
+		},
+	}))
+
+	w.texturedPipeline = texturedPipeline
+	w.bindGroup = bindGroupLayout
+	println("DEBUG: Textured pipeline created successfully")
+
+	return nil
+}
+
+// createSampler creates a texture sampler
+func (w *WebGPUCanvasManager) createSampler(device js.Value) error {
+	println("DEBUG: Creating sampler")
+
+	sampler := device.Call("createSampler", js.ValueOf(map[string]interface{}{
+		"magFilter":    "linear",
+		"minFilter":    "linear",
+		"mipmapFilter": "linear",
+		"addressModeU": "clamp-to-edge",
+		"addressModeV": "clamp-to-edge",
+	}))
+
+	w.sampler = sampler
+	println("DEBUG: Sampler created successfully")
+
+	return nil
+}
+
 // createSpriteVertexBuffer creates a dynamic vertex buffer for sprite rendering
 func (w *WebGPUCanvasManager) createSpriteVertexBuffer(device js.Value) error {
 	println("DEBUG: Creating sprite vertex buffer")
@@ -742,6 +909,83 @@ func (w *WebGPUCanvasManager) canvasToNDC(x, y float64) (float32, float32) {
 	return ndcX, ndcY
 }
 
+// DrawTexturedRect draws a textured rectangle
+func (w *WebGPUCanvasManager) DrawTexturedRect(texturePath string, position types.Vector2, size types.Vector2, uv types.UVRect) error {
+	if !w.initialized {
+		return &CanvasError{Message: "Canvas not initialized"}
+	}
+
+	// Check if texture is loaded
+	gpuTexture, exists := w.loadedTextures[texturePath]
+	if !exists {
+		println("DEBUG: Texture not loaded:", texturePath)
+		return &CanvasError{Message: "Texture not loaded: " + texturePath}
+	}
+
+	// Generate textured vertices
+	vertices := w.generateTexturedQuadVertices(position, size, uv)
+
+	// Upload vertices to GPU
+	verticesTypedArray := js.Global().Get("Float32Array").New(len(vertices))
+	for i, v := range vertices {
+		verticesTypedArray.SetIndex(i, v)
+	}
+
+	w.device.Get("queue").Call("writeBuffer",
+		w.vertexBuffer,
+		0, // offset
+		verticesTypedArray,
+		0,             // data offset
+		len(vertices), // size in floats
+	)
+
+	// Create bind group for this texture
+	w.textureBindGroup = w.createTextureBindGroup(gpuTexture)
+	w.currentTexture = gpuTexture
+
+	// Stage vertex count (4 floats per vertex for textured)
+	w.stagedVertexCount = len(vertices) / 4
+
+	println("DEBUG: Drew textured rect -", w.stagedVertexCount, "vertices")
+
+	return nil
+}
+
+// generateTexturedQuadVertices generates vertices for a textured rectangle
+func (w *WebGPUCanvasManager) generateTexturedQuadVertices(pos types.Vector2, size types.Vector2, uv types.UVRect) []float32 {
+	// Calculate corners in canvas coordinates
+	x0 := pos.X
+	y0 := pos.Y
+	x1 := pos.X + size.X
+	y1 := pos.Y + size.Y
+
+	// Convert to NDC
+	ndcX0, ndcY0 := w.canvasToNDC(x0, y0)
+	ndcX1, ndcY1 := w.canvasToNDC(x1, y1)
+
+	// UV coordinates
+	u0 := float32(uv.U)
+	v0 := float32(uv.V)
+	u1 := float32(uv.U + uv.W)
+	v1 := float32(uv.V + uv.H)
+
+	// Generate 6 vertices for 2 triangles (quad)
+	// Each vertex: [x, y, u, v]
+	vertices := []float32{
+		// Triangle 1
+		ndcX0, ndcY0, u0, v0, // Top-left
+		ndcX1, ndcY0, u1, v0, // Top-right
+		ndcX0, ndcY1, u0, v1, // Bottom-left
+
+		// Triangle 2
+		ndcX1, ndcY0, u1, v0, // Top-right
+		ndcX1, ndcY1, u1, v1, // Bottom-right
+		ndcX0, ndcY1, u0, v1, // Bottom-left
+	}
+
+	return vertices
+}
+
 // generateQuadVertices generates vertices for a colored rectangle
 func (w *WebGPUCanvasManager) generateQuadVertices(pos types.Vector2, size types.Vector2, color [4]float32) []float32 {
 	// Calculate corners in canvas coordinates
@@ -769,6 +1013,125 @@ func (w *WebGPUCanvasManager) generateQuadVertices(pos types.Vector2, size types
 	}
 
 	return vertices
+}
+
+// LoadTexture loads a PNG texture from a URL
+func (w *WebGPUCanvasManager) LoadTexture(path string) error {
+	if !w.initialized {
+		return &CanvasError{Message: "Canvas not initialized"}
+	}
+
+	// Check if already loaded
+	if _, exists := w.loadedTextures[path]; exists {
+		println("DEBUG: Texture already loaded:", path)
+		return nil
+	}
+
+	println("DEBUG: Loading texture from:", path)
+
+	// Create an Image element
+	image := js.Global().Get("Image").New()
+
+	// Set up a promise to wait for image load
+	imageLoaded := make(chan bool)
+
+	image.Set("onload", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		println("DEBUG: Image loaded successfully:", path)
+
+		// Upload texture to GPU
+		gpuTexture := w.uploadTextureToGPU(image)
+		w.loadedTextures[path] = gpuTexture
+
+		imageLoaded <- true
+		return nil
+	}))
+
+	image.Set("onerror", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		println("ERROR: Failed to load image:", path)
+		imageLoaded <- false
+		return nil
+	}))
+
+	image.Set("src", path)
+
+	// Wait for image to load (with timeout)
+	go func() {
+		<-imageLoaded
+	}()
+
+	return nil
+}
+
+// uploadTextureToGPU uploads an image to GPU memory
+func (w *WebGPUCanvasManager) uploadTextureToGPU(image js.Value) js.Value {
+	width := image.Get("width").Int()
+	height := image.Get("height").Int()
+
+	println("DEBUG: Uploading texture to GPU - Size:", width, "x", height)
+
+	// Create WebGPU texture
+	texture := w.device.Call("createTexture", js.ValueOf(map[string]interface{}{
+		"size": map[string]interface{}{
+			"width":  width,
+			"height": height,
+		},
+		"format": "rgba8unorm",
+		"usage": js.Global().Get("GPUTextureUsage").Get("TEXTURE_BINDING").Int() |
+			js.Global().Get("GPUTextureUsage").Get("COPY_DST").Int() |
+			js.Global().Get("GPUTextureUsage").Get("RENDER_ATTACHMENT").Int(),
+	}))
+
+	// Create a canvas to get pixel data
+	tempCanvas := js.Global().Get("document").Call("createElement", "canvas")
+	tempCanvas.Set("width", width)
+	tempCanvas.Set("height", height)
+	ctx := tempCanvas.Call("getContext", "2d")
+	ctx.Call("drawImage", image, 0, 0)
+
+	// Get image data
+	imageData := ctx.Call("getImageData", 0, 0, width, height)
+	data := imageData.Get("data")
+
+	// Write texture data
+	w.device.Get("queue").Call("writeTexture",
+		js.ValueOf(map[string]interface{}{
+			"texture": texture,
+		}),
+		data,
+		js.ValueOf(map[string]interface{}{
+			"bytesPerRow":  width * 4,
+			"rowsPerImage": height,
+		}),
+		js.ValueOf(map[string]interface{}{
+			"width":  width,
+			"height": height,
+		}),
+	)
+
+	println("DEBUG: Texture uploaded to GPU successfully")
+
+	return texture
+}
+
+// createTextureBindGroup creates a bind group for a specific texture
+func (w *WebGPUCanvasManager) createTextureBindGroup(texture js.Value) js.Value {
+	textureView := texture.Call("createView")
+
+	bindGroup := w.device.Call("createBindGroup", js.ValueOf(map[string]interface{}{
+		"layout": w.bindGroup,
+		"entries": []interface{}{
+			map[string]interface{}{
+				"binding":  0,
+				"resource": w.sampler,
+			},
+			map[string]interface{}{
+				"binding":  1,
+				"resource": textureView,
+			},
+		},
+	}))
+
+	return bindGroup
 }
 
 // ClearCanvas clears the canvas
