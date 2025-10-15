@@ -826,15 +826,20 @@ func (w *WebGPUCanvasManager) DrawTexturedRect(texturePath string, position type
 
 	vertices := w.generateTexturedQuadVertices(position, size, uv)
 
-	w.queue.WriteBuffer(w.vertexBuffer, 0, float32SliceToBytes(vertices))
-
 	// Create bind group for this texture
 	w.textureBindGroup = w.createTextureBindGroup(gpuTexture)
 	w.currentTexture = gpuTexture
 
-	w.stagedVertexCount = len(vertices) / 4 // 4 floats per vertex
-
-	println("DEBUG: Drew textured rect -", w.stagedVertexCount, "vertices")
+	if w.batchMode {
+		// Batch mode - accumulate vertices
+		w.stagedVertices = append(w.stagedVertices, vertices...)
+		println("DEBUG: Batched textured rect at", position.X, position.Y)
+	} else {
+		// Immediate mode - upload and stage
+		w.queue.WriteBuffer(w.vertexBuffer, 0, float32SliceToBytes(vertices))
+		w.stagedVertexCount = len(vertices) / 4 // 4 floats per vertex
+		println("DEBUG: Immediate mode - Drew textured rect -", w.stagedVertexCount, "vertices")
+	}
 
 	return nil
 }
@@ -945,7 +950,16 @@ func (w *WebGPUCanvasManager) FlushBatch() error {
 	}
 
 	w.queue.WriteBuffer(w.vertexBuffer, 0, float32SliceToBytes(w.stagedVertices))
-	w.stagedVertexCount = len(w.stagedVertices) / 6
+
+	// Calculate vertex count based on vertex format
+	// Textured vertices: 4 floats per vertex (position.xy + uv.xy)
+	// Colored vertices: 6 floats per vertex (position.xy + color.rgba)
+	// For now, we'll assume textured format if we have a currentTexture
+	if w.currentTexture != nil {
+		w.stagedVertexCount = len(w.stagedVertices) / 4
+	} else {
+		w.stagedVertexCount = len(w.stagedVertices) / 6
+	}
 
 	println("DEBUG: FlushBatch - Uploaded", len(w.stagedVertices), "floats (", w.stagedVertexCount, "vertices )")
 
