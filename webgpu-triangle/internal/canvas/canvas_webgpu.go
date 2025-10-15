@@ -24,10 +24,13 @@ type WebGPUCanvasManager struct {
 	queue    *wgpu.Queue
 	config   *wgpu.SurfaceConfiguration
 
-	// Pipelines
+	// Pipelines - available pipelines
 	trianglePipeline *wgpu.RenderPipeline
 	spritePipeline   *wgpu.RenderPipeline
 	texturedPipeline *wgpu.RenderPipeline
+
+	// Active pipelines - pipelines to execute in order
+	activePipelines []types.PipelineType
 
 	// Buffers
 	vertexBuffer  *wgpu.Buffer
@@ -176,6 +179,45 @@ func (w *WebGPUCanvasManager) Initialize(canvasID string) error {
 	println("DEBUG: WebGPU setup complete")
 
 	w.initialized = true
+	return nil
+}
+
+// SetPipelines sets the active pipelines to be executed in order
+// This method handles graceful switching between pipeline configurations
+func (w *WebGPUCanvasManager) SetPipelines(pipelines []types.PipelineType) error {
+	if !w.initialized {
+		return &CanvasError{Message: "Canvas not initialized"}
+	}
+
+	// Validate that all requested pipelines are available
+	for _, pipelineType := range pipelines {
+		switch pipelineType {
+		case types.TrianglePipeline:
+			if w.trianglePipeline == nil {
+				return &CanvasError{Message: "Triangle pipeline not available"}
+			}
+		case types.SpritePipeline:
+			if w.spritePipeline == nil {
+				return &CanvasError{Message: "Sprite pipeline not available"}
+			}
+		case types.TexturedPipeline:
+			if w.texturedPipeline == nil {
+				return &CanvasError{Message: "Textured pipeline not available"}
+			}
+		default:
+			return &CanvasError{Message: fmt.Sprintf("Unknown pipeline type: %v", pipelineType)}
+		}
+	}
+
+	// Clear any staged vertices from previous pipeline configuration
+	w.stagedVertexCount = 0
+	w.stagedVertices = nil
+
+	// Set the new active pipelines
+	w.activePipelines = make([]types.PipelineType, len(pipelines))
+	copy(w.activePipelines, pipelines)
+
+	println("DEBUG: Active pipelines set:", pipelines)
 	return nil
 }
 
@@ -568,24 +610,9 @@ func (w *WebGPUCanvasManager) renderFrame() error {
 		},
 	})
 
-	// Draw triangle
-	renderPass.SetPipeline(w.trianglePipeline)
-	renderPass.Draw(3, 1, 0, 0)
-
-	// Draw sprites if we have any staged vertices
-	if w.stagedVertexCount > 0 {
-		if w.currentTexture != nil && w.textureBindGroup != nil {
-			// Use textured pipeline
-			renderPass.SetPipeline(w.texturedPipeline)
-			renderPass.SetBindGroup(0, w.textureBindGroup, nil)
-			renderPass.SetVertexBuffer(0, w.vertexBuffer, 0, wgpu.WholeSize)
-			renderPass.Draw(uint32(w.stagedVertexCount), 1, 0, 0)
-		} else if w.spritePipeline != nil {
-			// Use colored pipeline
-			renderPass.SetPipeline(w.spritePipeline)
-			renderPass.SetVertexBuffer(0, w.vertexBuffer, 0, wgpu.WholeSize)
-			renderPass.Draw(uint32(w.stagedVertexCount), 1, 0, 0)
-		}
+	// Execute active pipelines in order
+	for _, pipelineType := range w.activePipelines {
+		w.executePipeline(renderPass, pipelineType)
 	}
 
 	renderPass.End()
@@ -616,6 +643,30 @@ func (w *WebGPUCanvasManager) canvasToNDC(x, y float64) (float32, float32) {
 	ndcY := float32(1.0 - (y/height)*2.0)
 
 	return ndcX, ndcY
+}
+
+// executePipeline executes a specific pipeline type during rendering
+func (w *WebGPUCanvasManager) executePipeline(renderPass *wgpu.RenderPassEncoder, pipelineType types.PipelineType) {
+	switch pipelineType {
+	case types.TrianglePipeline:
+		if w.trianglePipeline != nil {
+			renderPass.SetPipeline(w.trianglePipeline)
+			renderPass.Draw(3, 1, 0, 0)
+		}
+	case types.SpritePipeline:
+		if w.spritePipeline != nil && w.stagedVertexCount > 0 {
+			renderPass.SetPipeline(w.spritePipeline)
+			renderPass.SetVertexBuffer(0, w.vertexBuffer, 0, wgpu.WholeSize)
+			renderPass.Draw(uint32(w.stagedVertexCount), 1, 0, 0)
+		}
+	case types.TexturedPipeline:
+		if w.texturedPipeline != nil && w.stagedVertexCount > 0 && w.currentTexture != nil && w.textureBindGroup != nil {
+			renderPass.SetPipeline(w.texturedPipeline)
+			renderPass.SetBindGroup(0, w.textureBindGroup, nil)
+			renderPass.SetVertexBuffer(0, w.vertexBuffer, 0, wgpu.WholeSize)
+			renderPass.Draw(uint32(w.stagedVertexCount), 1, 0, 0)
+		}
+	}
 }
 
 // DrawColoredRect draws a colored rectangle

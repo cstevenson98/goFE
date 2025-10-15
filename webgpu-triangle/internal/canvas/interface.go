@@ -34,6 +34,7 @@ type CanvasManager interface {
 	// Pipeline management (stubs for future implementation)
 	GetSpritePipeline() types.Pipeline
 	GetBackgroundPipeline() types.Pipeline
+	SetPipelines(pipelines []types.PipelineType) error
 
 	// Canvas management
 	ClearCanvas() error

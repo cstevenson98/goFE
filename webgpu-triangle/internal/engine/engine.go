@@ -11,17 +11,34 @@ import (
 
 // Engine represents the game engine that manages the canvas and game loop
 type Engine struct {
-	canvasManager canvas.CanvasManager
-	lastTime      float64
-	textureLoaded bool
-	running       bool
+	canvasManager      canvas.CanvasManager
+	lastTime           float64
+	textureLoaded      bool
+	running            bool
+	currentGameState   types.GameState
+	gameStatePipelines map[types.GameState][]types.PipelineType
 }
 
 // NewEngine creates a new game engine instance
 func NewEngine() *Engine {
-	return &Engine{
-		canvasManager: canvas.NewWebGPUCanvasManager(),
-		running:       false,
+	e := &Engine{
+		canvasManager:      canvas.NewWebGPUCanvasManager(),
+		running:            false,
+		gameStatePipelines: make(map[types.GameState][]types.PipelineType),
+	}
+
+	// Initialize game state pipeline mappings
+	e.initializeGameStates()
+
+	return e
+}
+
+// initializeGameStates sets up the pipeline configurations for each game state
+func (e *Engine) initializeGameStates() {
+	// TEST state uses triangle and textured pipelines
+	e.gameStatePipelines[types.TEST] = []types.PipelineType{
+		types.TrianglePipeline,
+		types.TexturedPipeline,
 	}
 }
 
@@ -32,6 +49,13 @@ func (e *Engine) Initialize(canvasID string) error {
 	err := e.canvasManager.Initialize(canvasID)
 	if err != nil {
 		println("DEBUG: Engine initialization failed:", err.Error())
+		return err
+	}
+
+	// Set initial game state to TEST
+	err = e.SetGameState(types.TEST)
+	if err != nil {
+		println("DEBUG: Failed to set initial game state:", err.Error())
 		return err
 	}
 
@@ -135,4 +159,36 @@ func (e *Engine) Cleanup() error {
 // GetCanvasManager returns the underlying canvas manager for advanced usage
 func (e *Engine) GetCanvasManager() canvas.CanvasManager {
 	return e.canvasManager
+}
+
+// SetGameState changes the current game state and updates the active pipelines
+func (e *Engine) SetGameState(state types.GameState) error {
+	pipelines, exists := e.gameStatePipelines[state]
+	if !exists {
+		return &EngineError{Message: "Game state not configured: " + state.String()}
+	}
+
+	// Update canvas manager with the pipelines for this state
+	err := e.canvasManager.SetPipelines(pipelines)
+	if err != nil {
+		return err
+	}
+
+	e.currentGameState = state
+	println("DEBUG: Game state changed to:", state.String())
+	return nil
+}
+
+// GetGameState returns the current game state
+func (e *Engine) GetGameState() types.GameState {
+	return e.currentGameState
+}
+
+// EngineError represents an error in the engine
+type EngineError struct {
+	Message string
+}
+
+func (e *EngineError) Error() string {
+	return e.Message
 }

@@ -181,3 +181,48 @@ func (m *MockCanvasManager) ClearCanvas() error {
 	fmt.Println("Mock: ClearCanvas called")
 	return nil
 }
+
+// SetPipelines sets the active rendering pipelines
+func (m *MockCanvasManager) SetPipelines(pipelines []types.PipelineType) error {
+	if !m.initialized {
+		return &CanvasError{Message: "Canvas not initialized"}
+	}
+
+	fmt.Printf("Mock: SetPipelines called with %d pipelines\n", len(pipelines))
+	for i, p := range pipelines {
+		fmt.Printf("  Pipeline %d: %s\n", i, p.String())
+	}
+	return nil
+}
+
+// DrawColoredRect draws a colored rectangle
+func (m *MockCanvasManager) DrawColoredRect(position types.Vector2, size types.Vector2, color [4]float32) error {
+	if !m.initialized {
+		return &CanvasError{Message: "Canvas not initialized"}
+	}
+
+	fmt.Printf("Mock: DrawColoredRect - Position: (%.2f, %.2f), Size: (%.2f, %.2f), Color: (%.2f, %.2f, %.2f, %.2f)\n",
+		position.X, position.Y, size.X, size.Y, color[0], color[1], color[2], color[3])
+	return nil
+}
+
+// LoadTexture loads a texture from a path
+func (m *MockCanvasManager) LoadTexture(path string) error {
+	if !m.initialized {
+		return &CanvasError{Message: "Canvas not initialized"}
+	}
+
+	fmt.Printf("Mock: LoadTexture - Path: %s\n", path)
+	return nil
+}
+
+// DrawTexturedRect draws a textured rectangle
+func (m *MockCanvasManager) DrawTexturedRect(texturePath string, position types.Vector2, size types.Vector2, uv types.UVRect) error {
+	if !m.initialized {
+		return &CanvasError{Message: "Canvas not initialized"}
+	}
+
+	fmt.Printf("Mock: DrawTexturedRect - Texture: %s, Position: (%.2f, %.2f), Size: (%.2f, %.2f), UV: (%.2f, %.2f, %.2f, %.2f)\n",
+		texturePath, position.X, position.Y, size.X, size.Y, uv.U, uv.V, uv.W, uv.H)
+	return nil
+}
