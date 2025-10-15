@@ -10,7 +10,7 @@ import (
 
 // SpriteSheet represents a spritesheet with animation frames
 type SpriteSheet struct {
-	texture     js.Value
+	texturePath string // Path to the texture file
 	width       int
 	height      int
 	frameWidth  int
@@ -52,8 +52,12 @@ func NewSpriteRenderer(canvasManager canvas.CanvasManager) *SpriteRenderer {
 func (sr *SpriteRenderer) LoadSpriteSheet(id, imagePath string, frameWidth, frameHeight int) (*SpriteSheet, error) {
 	println("DEBUG: Loading spritesheet", id, "from", imagePath)
 
+	// Load the image using JavaScript to get dimensions
+	image := js.Global().Get("Image").New()
+
 	// Create a new spritesheet
 	spritesheet := &SpriteSheet{
+		texturePath: imagePath,
 		width:       0,
 		height:      0,
 		frameWidth:  frameWidth,
@@ -62,9 +66,6 @@ func (sr *SpriteRenderer) LoadSpriteSheet(id, imagePath string, frameWidth, fram
 		rows:        0,
 		totalFrames: 0,
 	}
-
-	// Load the image using JavaScript
-	image := js.Global().Get("Image").New()
 
 	// Create the onload handler and store it to prevent garbage collection
 	onloadHandler := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
@@ -76,7 +77,6 @@ func (sr *SpriteRenderer) LoadSpriteSheet(id, imagePath string, frameWidth, fram
 		spritesheet.cols = spritesheet.width / frameWidth
 		spritesheet.rows = spritesheet.height / frameHeight
 		spritesheet.totalFrames = spritesheet.cols * spritesheet.rows
-		spritesheet.texture = image
 
 		println("DEBUG: Loaded spritesheet", id, "- Size:", spritesheet.width, "x", spritesheet.height, "Frames:", spritesheet.totalFrames)
 
@@ -87,8 +87,10 @@ func (sr *SpriteRenderer) LoadSpriteSheet(id, imagePath string, frameWidth, fram
 			existing.cols = spritesheet.cols
 			existing.rows = spritesheet.rows
 			existing.totalFrames = spritesheet.totalFrames
-			existing.texture = spritesheet.texture
 		}
+
+		// Load the texture through the canvas manager
+		sr.canvasManager.LoadTexture(imagePath)
 		return nil
 	})
 
@@ -119,8 +121,8 @@ func (sr *SpriteRenderer) CreateSprite(spritesheetID string, position types.Vect
 		return nil, &canvas.CanvasError{Message: "Spritesheet not found: " + spritesheetID}
 	}
 
-	// Check if the spritesheet texture is loaded
-	if spritesheet.texture.IsUndefined() || spritesheet.texture.IsNull() {
+	// Check if the spritesheet has dimensions (meaning texture is loaded)
+	if spritesheet.width == 0 || spritesheet.height == 0 {
 		println("DEBUG: Spritesheet texture not loaded yet for", spritesheetID)
 		// Still create the sprite, it will be rendered once the texture loads
 	}
@@ -194,25 +196,17 @@ func (s *Sprite) GetCurrentFrameUV() types.UVRect {
 // Render renders all sprites
 func (sr *SpriteRenderer) Render() error {
 	for _, sprite := range sr.sprites {
-		// Check if spritesheet texture is valid
-		if sprite.spritesheet.texture.IsUndefined() || sprite.spritesheet.texture.IsNull() {
+		// Check if spritesheet has dimensions (meaning texture is loaded)
+		if sprite.spritesheet.width == 0 || sprite.spritesheet.height == 0 {
 			println("DEBUG: Spritesheet texture not loaded yet, skipping sprite")
 			continue
 		}
 
-		// Create a WebGPUTexture from the spritesheet
-		texture := types.NewWebGPUTexture(
-			sprite.spritesheet.width,
-			sprite.spritesheet.height,
-			"spritesheet-"+sprite.spritesheet.texture.String(),
-			sprite.spritesheet.texture,
-		)
-
 		// Get UV coordinates for current frame
 		uv := sprite.GetCurrentFrameUV()
 
-		// Use the canvas manager to draw the texture
-		err := sr.canvasManager.DrawTexture(texture, sprite.position, sprite.size, uv)
+		// Use the canvas manager to draw the textured rect
+		err := sr.canvasManager.DrawTexturedRect(sprite.spritesheet.texturePath, sprite.position, sprite.size, uv)
 		if err != nil {
 			println("DEBUG: Failed to draw sprite:", err.Error())
 			// Don't return error, just continue with other sprites

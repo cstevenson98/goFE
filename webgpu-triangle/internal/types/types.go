@@ -1,7 +1,5 @@
 package types
 
-import "syscall/js"
-
 // Vector2 represents a 2D vector
 type Vector2 struct {
 	X float64
@@ -21,46 +19,39 @@ type Texture interface {
 	GetWidth() int
 	GetHeight() int
 	GetID() string
-	GetWebGPUTexture() js.Value
 }
 
 // WebGPUTexture implements the Texture interface
 type WebGPUTexture struct {
-	Width   int
-	Height  int
-	ID      string
-	texture js.Value
+	Width  int
+	Height int
+	ID     string
 }
 
-func (t *WebGPUTexture) GetWidth() int              { return t.Width }
-func (t *WebGPUTexture) GetHeight() int             { return t.Height }
-func (t *WebGPUTexture) GetID() string              { return t.ID }
-func (t *WebGPUTexture) GetWebGPUTexture() js.Value { return t.texture }
+func (t *WebGPUTexture) GetWidth() int  { return t.Width }
+func (t *WebGPUTexture) GetHeight() int { return t.Height }
+func (t *WebGPUTexture) GetID() string  { return t.ID }
 
 // NewWebGPUTexture creates a new WebGPUTexture with the given parameters
-func NewWebGPUTexture(width, height int, id string, texture js.Value) *WebGPUTexture {
+func NewWebGPUTexture(width, height int, id string) *WebGPUTexture {
 	return &WebGPUTexture{
-		Width:   width,
-		Height:  height,
-		ID:      id,
-		texture: texture,
+		Width:  width,
+		Height: height,
+		ID:     id,
 	}
 }
 
 // Pipeline represents a WebGPU render pipeline
 type Pipeline interface {
-	GetWebGPUPipeline() js.Value
 	IsValid() bool
 }
 
 // WebGPUPipeline implements the Pipeline interface
 type WebGPUPipeline struct {
-	pipeline js.Value
-	Valid    bool
+	Valid bool
 }
 
-func (p *WebGPUPipeline) GetWebGPUPipeline() js.Value { return p.pipeline }
-func (p *WebGPUPipeline) IsValid() bool               { return p.Valid }
+func (p *WebGPUPipeline) IsValid() bool { return p.Valid }
 
 // SpriteVertex represents a vertex for sprite rendering
 type SpriteVertex struct {
